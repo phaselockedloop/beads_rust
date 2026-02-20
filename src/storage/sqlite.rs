@@ -99,6 +99,7 @@ impl SqliteStorage {
     /// Returns an error if the connection cannot be established or schema application fails.
     pub fn open_with_timeout(path: &Path, _lock_timeout_ms: Option<u64>) -> Result<Self> {
         let conn = Connection::open(path.to_string_lossy().into_owned())?;
+        #[allow(clippy::cast_possible_truncation)]
         let user_version = conn
             .query_row("PRAGMA user_version")
             .ok()
@@ -257,7 +258,7 @@ impl SqliteStorage {
                     SqliteValue::from(issue_type_str),
                     issue.assignee.as_deref().map_or(SqliteValue::Null, SqliteValue::from),
                     SqliteValue::from(issue.owner.as_deref().unwrap_or("")),
-                    issue.estimated_minutes.map_or(SqliteValue::Null, |v| SqliteValue::from(v)),
+                    issue.estimated_minutes.map_or(SqliteValue::Null, SqliteValue::from),
                     SqliteValue::from(created_at_str.as_str()),
                     SqliteValue::from(issue.created_by.as_deref().unwrap_or("")),
                     SqliteValue::from(updated_at_str.as_str()),
@@ -1401,6 +1402,7 @@ impl SqliteStorage {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn rebuild_blocked_cache_impl(conn: &Connection) -> Result<usize> {
         const MAX_DEPTH: i32 = 50;
 
@@ -2502,6 +2504,7 @@ impl SqliteStorage {
                         .unwrap_or("")
                         .to_string(),
                     status: parse_status(row.get(2).and_then(SqliteValue::as_text)),
+                    #[allow(clippy::cast_possible_truncation)]
                     priority: Priority(
                         row.get(3).and_then(SqliteValue::as_integer).unwrap_or(2) as i32
                     ),
@@ -2547,6 +2550,7 @@ impl SqliteStorage {
                         .unwrap_or("")
                         .to_string(),
                     status: parse_status(row.get(2).and_then(SqliteValue::as_text)),
+                    #[allow(clippy::cast_possible_truncation)]
                     priority: Priority(
                         row.get(3).and_then(SqliteValue::as_integer).unwrap_or(2) as i32
                     ),
@@ -3277,6 +3281,7 @@ impl SqliteStorage {
                 .and_then(SqliteValue::as_text)
                 .map(str::to_string)
         };
+        #[allow(clippy::cast_possible_truncation)]
         let get_opt_i32 = |idx: usize| -> Option<i32> {
             row.get(idx)
                 .and_then(SqliteValue::as_integer)
@@ -4914,6 +4919,7 @@ mod tests {
         let storage = SqliteStorage::open_memory().unwrap();
 
         // Check foreign keys are enabled
+        #[allow(clippy::cast_possible_truncation)]
         let fk = storage
             .conn
             .query_row("PRAGMA foreign_keys")

@@ -74,18 +74,9 @@ pub fn insert_event(
             SqliteValue::from(issue_id),
             SqliteValue::from(event_type.as_str()),
             SqliteValue::from(actor),
-            match old_value {
-                Some(v) => SqliteValue::from(v),
-                None => SqliteValue::Null,
-            },
-            match new_value {
-                Some(v) => SqliteValue::from(v),
-                None => SqliteValue::Null,
-            },
-            match comment {
-                Some(v) => SqliteValue::from(v),
-                None => SqliteValue::Null,
-            },
+            old_value.map_or(SqliteValue::Null, SqliteValue::from),
+            new_value.map_or(SqliteValue::Null, SqliteValue::from),
+            comment.map_or(SqliteValue::Null, SqliteValue::from),
             SqliteValue::from(now.to_rfc3339()),
         ],
     )?;
@@ -374,6 +365,7 @@ pub fn get_events(conn: &Connection, issue_id: &str, limit: usize) -> Result<Vec
             ORDER BY created_at DESC, id DESC
             LIMIT ?2
             ",
+            #[allow(clippy::cast_possible_wrap)]
             &[SqliteValue::from(issue_id), SqliteValue::from(limit as i64)],
         )?
     } else {
@@ -392,7 +384,7 @@ pub fn get_events(conn: &Connection, issue_id: &str, limit: usize) -> Result<Vec
 }
 
 fn event_from_row(row: &Row) -> Event {
-    let id = row.get(0).and_then(|v| v.as_integer()).unwrap_or(0);
+    let id = row.get(0).and_then(SqliteValue::as_integer).unwrap_or(0);
     let issue_id = row
         .get(1)
         .and_then(|v| v.as_text())
@@ -455,6 +447,7 @@ pub fn get_all_events(conn: &Connection, limit: usize) -> Result<Vec<Event>> {
             ORDER BY created_at DESC, id DESC
             LIMIT ?1
             ",
+            #[allow(clippy::cast_possible_wrap)]
             &[SqliteValue::from(limit as i64)],
         )?
     } else {
@@ -480,7 +473,7 @@ pub fn count_events(conn: &Connection, issue_id: &str) -> Result<i64> {
         "SELECT COUNT(*) FROM events WHERE issue_id = ?1",
         &[SqliteValue::from(issue_id)],
     )?;
-    let count = row.get(0).and_then(|v| v.as_integer()).unwrap_or(0);
+    let count = row.get(0).and_then(SqliteValue::as_integer).unwrap_or(0);
     Ok(count)
 }
 

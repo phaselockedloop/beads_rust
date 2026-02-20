@@ -253,8 +253,7 @@ fn table_exists(conn: &Connection, table: &str) -> bool {
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
         &[SqliteValue::from(table)],
     )
-    .map(|rows| !rows.is_empty())
-    .unwrap_or(false)
+    .is_ok_and(|rows| !rows.is_empty())
 }
 
 fn column_exists(conn: &Connection, table: &str, column: &str) -> bool {
@@ -263,8 +262,7 @@ fn column_exists(conn: &Connection, table: &str, column: &str) -> bool {
     // but we validate it's a known table name before calling this function.
     let sql = format!("SELECT 1 FROM pragma_table_info('{table}') WHERE name = ?");
     conn.query_with_params(&sql, &[SqliteValue::from(column)])
-        .map(|rows| !rows.is_empty())
-        .unwrap_or(false)
+        .is_ok_and(|rows| !rows.is_empty())
 }
 
 const ISSUE_COLUMNS: &[(&str, &str)] = &[
@@ -382,18 +380,15 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     // Check for old column name (blocked_by_json) or missing columns
     let has_blocked_by: bool = conn
         .query("SELECT 1 FROM pragma_table_info('blocked_issues_cache') WHERE name='blocked_by'")
-        .map(|rows| !rows.is_empty())
-        .unwrap_or(false);
+        .is_ok_and(|rows| !rows.is_empty());
 
     let has_blocked_at: bool = conn
         .query("SELECT 1 FROM pragma_table_info('blocked_issues_cache') WHERE name='blocked_at'")
-        .map(|rows| !rows.is_empty())
-        .unwrap_or(false);
+        .is_ok_and(|rows| !rows.is_empty());
 
     let has_issue_id: bool = conn
         .query("SELECT 1 FROM pragma_table_info('blocked_issues_cache') WHERE name='issue_id'")
-        .map(|rows| !rows.is_empty())
-        .unwrap_or(false);
+        .is_ok_and(|rows| !rows.is_empty());
 
     if !has_blocked_by || !has_blocked_at || !has_issue_id {
         // Table needs update - drop and recreate (it's a cache, data is regenerated)
@@ -414,8 +409,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     // Migration: ensure compaction_level is never NULL (bd compatibility)
     let has_compaction_level: bool = conn
         .query("SELECT 1 FROM pragma_table_info('issues') WHERE name='compaction_level'")
-        .map(|rows| !rows.is_empty())
-        .unwrap_or(false);
+        .is_ok_and(|rows| !rows.is_empty());
 
     if has_compaction_level {
         conn.execute("UPDATE issues SET compaction_level = 0 WHERE compaction_level IS NULL")?;
@@ -424,8 +418,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     // Migration: ensure source_repo column exists (bd compatibility)
     let has_source_repo: bool = conn
         .query("SELECT 1 FROM pragma_table_info('issues') WHERE name='source_repo'")
-        .map(|rows| !rows.is_empty())
-        .unwrap_or(false);
+        .is_ok_and(|rows| !rows.is_empty());
 
     if !has_source_repo {
         conn.execute("ALTER TABLE issues ADD COLUMN source_repo TEXT NOT NULL DEFAULT '.'")?;
@@ -561,7 +554,7 @@ mod tests {
         assert!(journal_mode.to_uppercase() == "WAL" || journal_mode.to_uppercase() == "MEMORY");
 
         let row = conn.query_row("PRAGMA foreign_keys").unwrap();
-        let foreign_keys = row.get(0).and_then(|v| v.as_integer()).unwrap_or(0);
+        let foreign_keys = row.get(0).and_then(SqliteValue::as_integer).unwrap_or(0);
         assert_eq!(foreign_keys, 1);
     }
 
@@ -589,7 +582,8 @@ mod tests {
                         .and_then(|v| v.as_text())
                         .unwrap_or("")
                         .to_string(),
-                    row.get(3).and_then(|v| v.as_integer()).unwrap_or(0) as i32,
+                    #[allow(clippy::cast_possible_truncation)]
+                    {row.get(3).and_then(SqliteValue::as_integer).unwrap_or(0) as i32},
                     row.get(4).and_then(|v| v.as_text()).map(String::from),
                 )
             })
@@ -1070,15 +1064,12 @@ mod tests {
 
         apply_schema(&conn).unwrap();
 
-        let cols: Vec<String> = conn
-            .query("PRAGMA table_info('dependencies')")
-            .unwrap()
-            .iter()
-            .filter_map(|row| row.get(1).and_then(|v| v.as_text()).map(String::from))
-            .collect();
-
         assert!(
-            cols.contains(&"type".to_string()),
+            conn.query("PRAGMA table_info('dependencies')")
+                .unwrap()
+                .iter()
+                .filter_map(|row| row.get(1).and_then(|v| v.as_text()).map(String::from))
+                .any(|col| col == "type"),
             "missing dependency type column"
         );
     }
