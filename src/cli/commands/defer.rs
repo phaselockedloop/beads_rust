@@ -235,6 +235,7 @@ pub fn execute_undefer(
         let update = IssueUpdate {
             status: Some(Status::Open),
             defer_until: Some(None), // Clear defer_until
+            skip_cache_rebuild: true,
             ..Default::default()
         };
 

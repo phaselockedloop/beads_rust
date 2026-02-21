@@ -124,6 +124,7 @@ fn execute_close_eligible(
             status: Some(Status::Closed),
             closed_at: Some(Some(now)),
             close_reason: Some(Some("All children completed".to_string())),
+            skip_cache_rebuild: true,
             ..Default::default()
         };
 

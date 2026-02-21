@@ -243,6 +243,14 @@ fn run_auto_import(
         Err(e) => return Err(e),
     };
 
+    // Fast path: skip auto-import for no_db mode to avoid redundant memory DB creation
+    if let Ok(startup_layer) = config::load_startup_config(&beads_dir) {
+        let merged_layer = config::ConfigLayer::merge_layers(&[startup_layer, overrides.as_layer()]);
+        if config::no_db_from_layer(&merged_layer).unwrap_or(false) {
+            return Ok(());
+        }
+    }
+
     let config::OpenStorageResult {
         mut storage,
         paths,
@@ -289,6 +297,14 @@ fn run_auto_flush(overrides: &config::CliOverrides) {
             return;
         }
     };
+
+    // Fast path: skip auto-flush for no_db mode to avoid overwriting JSONL with empty/stale disk DB
+    if let Ok(startup_layer) = config::load_startup_config(&beads_dir) {
+        let merged_layer = config::ConfigLayer::merge_layers(&[startup_layer, overrides.as_layer()]);
+        if config::no_db_from_layer(&merged_layer).unwrap_or(false) {
+            return;
+        }
+    }
 
     // Open storage with fresh connection
     let (mut storage, _paths) =

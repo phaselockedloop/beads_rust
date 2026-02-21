@@ -1251,12 +1251,15 @@ impl SqliteStorage {
                     // No descendants — short-circuit to empty result.
                     sql.push_str(" AND 1 = 0");
                 } else {
-                    let placeholders: Vec<String> =
-                        descendant_ids.iter().map(|_| "?".to_string()).collect();
-                    let _ = write!(sql, " AND id IN ({})", placeholders.join(","));
-                    for id in &descendant_ids {
-                        params.push(SqliteValue::from(id.as_str()));
+                    let mut chunks_sql = Vec::new();
+                    for chunk in descendant_ids.chunks(900) {
+                        let placeholders: Vec<String> = chunk.iter().map(|_| "?".to_string()).collect();
+                        chunks_sql.push(format!("id IN ({})", placeholders.join(",")));
+                        for id in chunk {
+                            params.push(SqliteValue::from(id.as_str()));
+                        }
                     }
+                    let _ = write!(sql, " AND ({})", chunks_sql.join(" OR "));
                 }
             } else {
                 sql.push_str(
@@ -3060,23 +3063,29 @@ impl SqliteStorage {
     ///
     /// Returns an error if the database update fails.
     pub fn clear_dirty_issues(&mut self, issue_ids: &[String]) -> Result<usize> {
+        const SQLITE_VAR_LIMIT: usize = 900;
         if issue_ids.is_empty() {
             return Ok(0);
         }
 
-        let placeholders: Vec<&str> = issue_ids.iter().map(|_| "?").collect();
-        let sql = format!(
-            "DELETE FROM dirty_issues WHERE issue_id IN ({})",
-            placeholders.join(",")
-        );
+        let mut total_deleted = 0;
+        for chunk in issue_ids.chunks(SQLITE_VAR_LIMIT) {
+            let placeholders: Vec<&str> = chunk.iter().map(|_| "?").collect();
+            let sql = format!(
+                "DELETE FROM dirty_issues WHERE issue_id IN ({})",
+                placeholders.join(",")
+            );
 
-        let params: Vec<SqliteValue> = issue_ids
-            .iter()
-            .map(|s| SqliteValue::from(s.as_str()))
-            .collect();
+            let params: Vec<SqliteValue> = chunk
+                .iter()
+                .map(|s| SqliteValue::from(s.as_str()))
+                .collect();
 
-        let count = self.conn.execute_with_params(&sql, &params)?;
-        Ok(count)
+            let count = self.conn.execute_with_params(&sql, &params)?;
+            total_deleted += count;
+        }
+
+        Ok(total_deleted)
     }
 
     /// Clear all dirty flags.
@@ -3195,36 +3204,39 @@ impl SqliteStorage {
     ///
     /// Returns an error if the database query fails.
     pub fn get_issues_needing_export(&self, dirty_ids: &[String]) -> Result<Vec<String>> {
+        const SQLITE_VAR_LIMIT: usize = 900;
         if dirty_ids.is_empty() {
             return Ok(vec![]);
         }
 
-        // Build a query that finds dirty issues where:
-        // 1. The issue has no export hash (never exported), OR
-        // 2. The issue's current content hash differs from the stored export hash
-        let placeholders: Vec<&str> = dirty_ids.iter().map(|_| "?").collect();
-        let sql = format!(
-            "SELECT i.id FROM issues i
-             WHERE i.id IN ({})
-               AND i.deleted_at IS NULL
-               AND (
-                 NOT EXISTS (SELECT 1 FROM export_hashes e WHERE e.issue_id = i.id)
-                 OR i.content_hash != (SELECT e.content_hash FROM export_hashes e WHERE e.issue_id = i.id)
-               )
-             ORDER BY i.id",
-            placeholders.join(",")
-        );
+        let mut results = Vec::new();
+        for chunk in dirty_ids.chunks(SQLITE_VAR_LIMIT) {
+            let placeholders: Vec<&str> = chunk.iter().map(|_| "?").collect();
+            let sql = format!(
+                "SELECT i.id FROM issues i
+                 WHERE i.id IN ({})
+                   AND i.deleted_at IS NULL
+                   AND (
+                     NOT EXISTS (SELECT 1 FROM export_hashes e WHERE e.issue_id = i.id)
+                     OR i.content_hash != (SELECT e.content_hash FROM export_hashes e WHERE e.issue_id = i.id)
+                   )
+                 ORDER BY i.id",
+                placeholders.join(",")
+            );
 
-        let params: Vec<SqliteValue> = dirty_ids
-            .iter()
-            .map(|s| SqliteValue::from(s.as_str()))
-            .collect();
+            let params: Vec<SqliteValue> = chunk
+                .iter()
+                .map(|s| SqliteValue::from(s.as_str()))
+                .collect();
 
-        let rows = self.conn.query_with_params(&sql, &params)?;
-        Ok(rows
-            .iter()
-            .filter_map(|r| r.get(0).and_then(SqliteValue::as_text).map(String::from))
-            .collect())
+            let rows = self.conn.query_with_params(&sql, &params)?;
+            results.extend(rows
+                .iter()
+                .filter_map(|r| r.get(0).and_then(SqliteValue::as_text).map(String::from)));
+        }
+        
+        results.sort();
+        Ok(results)
     }
 
     /// Get a metadata value by key.
@@ -3733,17 +3745,22 @@ impl SqliteStorage {
     ///
     /// Returns an error if the database operation fails.
     pub fn clear_dirty_flags(&mut self, ids: &[String]) -> Result<usize> {
+        const SQLITE_VAR_LIMIT: usize = 900;
         if ids.is_empty() {
             return Ok(0);
         }
 
-        let placeholders = vec!["?"; ids.len()].join(", ");
-        let sql = format!("DELETE FROM dirty_issues WHERE issue_id IN ({placeholders})");
+        let mut total_deleted = 0;
+        for chunk in ids.chunks(SQLITE_VAR_LIMIT) {
+            let placeholders = vec!["?"; chunk.len()].join(", ");
+            let sql = format!("DELETE FROM dirty_issues WHERE issue_id IN ({placeholders})");
 
-        let params: Vec<SqliteValue> = ids.iter().map(|s| SqliteValue::from(s.as_str())).collect();
-        let deleted = self.conn.execute_with_params(&sql, &params)?;
+            let params: Vec<SqliteValue> = chunk.iter().map(|s| SqliteValue::from(s.as_str())).collect();
+            let deleted = self.conn.execute_with_params(&sql, &params)?;
+            total_deleted += deleted;
+        }
 
-        Ok(deleted)
+        Ok(total_deleted)
     }
 
     /// Clear all dirty flags.
