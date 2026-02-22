@@ -460,8 +460,12 @@ fn apply_sort(issues: &mut [IssueWithCounts], sort: Option<&str>) -> Result<()> 
 
     match sort_key {
         "priority" => issues.sort_by_key(|iwc| iwc.issue.priority),
-        "created_at" | "created" => issues.sort_by_key(|iwc| std::cmp::Reverse(iwc.issue.created_at)),
-        "updated_at" | "updated" => issues.sort_by_key(|iwc| std::cmp::Reverse(iwc.issue.updated_at)),
+        "created_at" | "created" => {
+            issues.sort_by_key(|iwc| std::cmp::Reverse(iwc.issue.created_at));
+        }
+        "updated_at" | "updated" => {
+            issues.sort_by_key(|iwc| std::cmp::Reverse(iwc.issue.updated_at));
+        }
         "title" => issues.sort_by_cached_key(|iwc| iwc.issue.title.to_lowercase()),
         _ => {
             return Err(BeadsError::Validation {

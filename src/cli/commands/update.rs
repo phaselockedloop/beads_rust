@@ -59,10 +59,9 @@ pub fn execute(args: &UpdateArgs, cli: &config::CliOverrides, ctx: &OutputContex
 
     // Validate labels before making any database changes
     for label in &args.add_label {
-        LabelValidator::validate(label)
-            .map_err(|e| BeadsError::validation("label", e.message))?;
+        LabelValidator::validate(label).map_err(|e| BeadsError::validation("label", e.message))?;
     }
-    
+
     let mut valid_set_labels = Vec::new();
     if !args.set_labels.is_empty() {
         let combined = args.set_labels.join(",");
@@ -346,9 +345,7 @@ fn apply_parent_update(
     // Pre-check for cycle to prevent partial update (orphaning the issue if add_dependency fails)
     if storage.would_create_cycle(issue_id, &parent_id, true)? {
         return Err(BeadsError::DependencyCycle {
-            path: format!(
-                "Setting parent of {issue_id} to {parent_id} would create a cycle"
-            ),
+            path: format!("Setting parent of {issue_id} to {parent_id} would create a cycle"),
         });
     }
 

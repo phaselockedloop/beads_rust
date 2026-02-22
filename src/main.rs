@@ -245,7 +245,8 @@ fn run_auto_import(
 
     // Fast path: skip auto-import for no_db mode to avoid redundant memory DB creation
     if let Ok(startup_layer) = config::load_startup_config(&beads_dir) {
-        let merged_layer = config::ConfigLayer::merge_layers(&[startup_layer, overrides.as_layer()]);
+        let merged_layer =
+            config::ConfigLayer::merge_layers(&[startup_layer, overrides.as_layer()]);
         if config::no_db_from_layer(&merged_layer).unwrap_or(false) {
             return Ok(());
         }
@@ -300,7 +301,8 @@ fn run_auto_flush(overrides: &config::CliOverrides) {
 
     // Fast path: skip auto-flush for no_db mode to avoid overwriting JSONL with empty/stale disk DB
     if let Ok(startup_layer) = config::load_startup_config(&beads_dir) {
-        let merged_layer = config::ConfigLayer::merge_layers(&[startup_layer, overrides.as_layer()]);
+        let merged_layer =
+            config::ConfigLayer::merge_layers(&[startup_layer, overrides.as_layer()]);
         if config::no_db_from_layer(&merged_layer).unwrap_or(false) {
             return;
         }

@@ -463,7 +463,7 @@ fn new_audit_id() -> String {
 }
 
 fn render_audit_log_rich(issue_id: &str, events: &[crate::model::Event], ctx: &OutputContext) {
-    let console = Console::default();
+    let _console = Console::default();
     let theme = ctx.theme();
     let width = ctx.width();
 
@@ -552,7 +552,7 @@ fn render_audit_summary_rich(
     actors: &[ActorSummary],
     ctx: &OutputContext,
 ) {
-    let console = Console::default();
+    let _console = Console::default();
     let theme = ctx.theme();
     let width = ctx.width();
 

@@ -11,6 +11,7 @@ use std::path::Path;
 /// # Errors
 ///
 /// Returns an error if the directory or database cannot be created.
+#[allow(clippy::too_many_lines)]
 pub fn execute(
     prefix: Option<String>,
     force: bool,
@@ -47,15 +48,12 @@ pub fn execute(
 
     // Set prefix in config table if provided, otherwise derive from directory name
     // Normalize to lowercase since ID validation requires lowercase prefixes
-    let mut prefix_set = None;
-    let actual_prefix = if let Some(p) = prefix {
-        p
-    } else {
-        // Derive prefix from current directory name if none provided
+    let actual_prefix = prefix.unwrap_or_else(|| {
         let mut dir_name = "bd".to_string();
         if let Ok(canon) = dunce::canonicalize(base_dir) {
             if let Some(name) = canon.file_name().and_then(|n| n.to_str()) {
-                let cleaned: String = name.chars()
+                let cleaned: String = name
+                    .chars()
                     .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
                     .collect();
                 if !cleaned.is_empty() {
@@ -64,11 +62,10 @@ pub fn execute(
             }
         }
         dir_name
-    };
-    
+    });
     let normalized = actual_prefix.to_ascii_lowercase();
     storage.set_config("issue_prefix", &normalized)?;
-    prefix_set = Some(normalized.clone());
+    let prefix_set = Some(normalized.clone());
 
     // Write metadata.json
     let metadata_path = beads_dir.join("metadata.json");
@@ -85,11 +82,13 @@ pub fn execute(
     let config_path = beads_dir.join("config.yaml");
     let config_existed = config_path.exists();
     if !config_existed {
-        let config = format!("# Beads Project Configuration
+        let config = format!(
+            "# Beads Project Configuration
 # issue_prefix: {normalized}
 # default_priority: 2
 # default_type: task
-");
+"
+        );
         fs::write(config_path, config)?;
     }
 

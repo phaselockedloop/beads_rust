@@ -115,7 +115,7 @@ pub fn execute(
 
 /// Render simple count with rich formatting.
 fn render_count_simple_rich(total: usize, ctx: &OutputContext) {
-    let console = Console::default();
+    let _console = Console::default();
     let theme = ctx.theme();
     let width = ctx.width();
 
@@ -138,7 +138,7 @@ fn render_count_grouped_rich(
     by: CountBy,
     ctx: &OutputContext,
 ) {
-    let console = Console::default();
+    let _console = Console::default();
     let theme = ctx.theme();
     let width = ctx.width();
 

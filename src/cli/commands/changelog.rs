@@ -185,7 +185,7 @@ fn print_text_output(output: &ChangelogOutput) {
 
 /// Render changelog with rich formatting.
 fn render_changelog_rich(output: &ChangelogOutput, ctx: &OutputContext) {
-    let console = Console::default();
+    let _console = Console::default();
     let theme = ctx.theme();
     let width = ctx.width();
 

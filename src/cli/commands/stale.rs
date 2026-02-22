@@ -97,7 +97,6 @@ fn render_stale_rich(
     ctx: &OutputContext,
 ) {
     use rich_rust::Text;
-    use rich_rust::prelude::*;
 
     let theme = ctx.theme();
 
