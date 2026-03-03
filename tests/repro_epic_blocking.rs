@@ -1,5 +1,5 @@
 use beads_rust::model::{Issue, IssueType, Priority, Status};
-use beads_rust::storage::SqliteStorage;
+use beads_rust::storage::JsonStorage;
 use chrono::Utc;
 
 fn create_issue(id: &str, title: &str, issue_type: IssueType) -> Issue {
@@ -48,7 +48,7 @@ fn create_issue(id: &str, title: &str, issue_type: IssueType) -> Issue {
 
 #[test]
 fn test_epic_does_not_block_task() {
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
 
     let epic = create_issue("bd-epic", "Epic", IssueType::Epic);
     storage.create_issue(&epic, "user").unwrap();
@@ -73,7 +73,7 @@ fn test_epic_does_not_block_task() {
 
 #[test]
 fn test_epic_blocking_propagates_to_task() {
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
 
     let epic = create_issue("bd-epic", "Epic", IssueType::Epic);
     storage.create_issue(&epic, "user").unwrap();

@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_imports)]
 
-use beads_rust::storage::SqliteStorage;
+use beads_rust::storage::JsonStorage;
 use std::sync::Once;
 use std::time::Instant;
 use tempfile::TempDir;
@@ -77,16 +77,16 @@ pub fn test_log(name: &str) -> TestLogGuard {
     TestLogGuard::new(name)
 }
 
-pub fn test_db() -> SqliteStorage {
+pub fn test_db() -> JsonStorage {
     init_test_logging();
-    SqliteStorage::open_memory().expect("Failed to create test database")
+    JsonStorage::open_memory().expect("Failed to create test database")
 }
 
-pub fn test_db_with_dir() -> (SqliteStorage, TempDir) {
+pub fn test_db_with_dir() -> (JsonStorage, TempDir) {
     init_test_logging();
     let dir = TempDir::new().expect("Failed to create temp dir");
-    let db_path = dir.path().join(".beads").join("beads.db");
+    let db_path = dir.path().join(".beads").join("issues.jsonl");
     std::fs::create_dir_all(db_path.parent().unwrap()).unwrap();
-    let storage = SqliteStorage::open(&db_path).expect("Failed to create test database");
+    let storage = JsonStorage::open(&db_path).expect("Failed to create test database");
     (storage, dir)
 }

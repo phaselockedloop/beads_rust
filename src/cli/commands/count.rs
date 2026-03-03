@@ -3,7 +3,7 @@ use crate::config;
 use crate::error::Result;
 use crate::model::{IssueType, Priority, Status};
 use crate::output::{OutputContext, OutputMode};
-use crate::storage::{ListFilters, SqliteStorage};
+use crate::storage::{ListFilters, JsonStorage};
 use rich_rust::prelude::*;
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -195,7 +195,7 @@ fn parse_priorities(values: &[String]) -> Result<Vec<Priority>> {
 }
 
 fn group_counts(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     issues: &[crate::model::Issue],
     by: CountBy,
 ) -> Result<Vec<CountGroup>> {
@@ -236,8 +236,12 @@ fn group_counts(
 
             for issue in issues {
                 if let Some(labels) = labels_map.remove(&issue.id) {
-                    for label in labels {
-                        *counts.entry(label).or_insert(0) += 1;
+                    if labels.is_empty() {
+                        *counts.entry("(no labels)".to_string()).or_insert(0) += 1;
+                    } else {
+                        for label in labels {
+                            *counts.entry(label).or_insert(0) += 1;
+                        }
                     }
                 } else {
                     *counts.entry("(no labels)".to_string()).or_insert(0) += 1;
@@ -311,7 +315,7 @@ mod tests {
     fn test_group_counts_status() {
         init_logging();
         info!("test_group_counts_status: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
         let issue1 = make_issue("bd-1", Status::Open, Priority::MEDIUM, IssueType::Task);
         let issue2 = make_issue("bd-2", Status::InProgress, Priority::HIGH, IssueType::Bug);
 
@@ -340,7 +344,7 @@ mod tests {
     fn test_group_counts_label_includes_unlabeled() {
         init_logging();
         info!("test_group_counts_label_includes_unlabeled: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
         let issue1 = make_issue("bd-1", Status::Open, Priority::MEDIUM, IssueType::Task);
         let issue2 = make_issue("bd-2", Status::Open, Priority::LOW, IssueType::Task);
 

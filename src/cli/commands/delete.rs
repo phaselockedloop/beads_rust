@@ -7,7 +7,7 @@ use crate::cli::DeleteArgs;
 use crate::config;
 use crate::error::{BeadsError, Result};
 use crate::output::OutputContext;
-use crate::storage::SqliteStorage;
+use crate::storage::JsonStorage;
 use rich_rust::prelude::*;
 use serde::Serialize;
 use std::collections::HashSet;
@@ -252,7 +252,7 @@ fn read_ids_from_file(path: &Path) -> Result<Vec<String>> {
 
 /// Recursively collect all dependents for cascade deletion.
 fn collect_cascade_dependents(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     initial_ids: &[String],
 ) -> Result<HashSet<String>> {
     let mut all_ids: HashSet<String> = initial_ids.iter().cloned().collect();
@@ -279,7 +279,7 @@ fn collect_cascade_dependents(
 /// Render the dependents warning panel in rich format.
 fn render_dependents_warning_rich(
     dependents: &[String],
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     ctx: &OutputContext,
 ) {
     let console = Console::default();
@@ -326,7 +326,7 @@ fn render_dry_run_rich(
     ids: &[String],
     cascade_ids: &[String],
     orphan_ids: &[String],
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     ctx: &OutputContext,
 ) {
     let console = Console::default();
@@ -397,7 +397,7 @@ fn render_dry_run_rich(
 }
 
 /// Render the delete result in rich format.
-fn render_delete_result_rich(result: &DeleteResult, storage: &SqliteStorage, ctx: &OutputContext) {
+fn render_delete_result_rich(result: &DeleteResult, storage: &JsonStorage, ctx: &OutputContext) {
     let console = Console::default();
     let theme = ctx.theme();
     let width = ctx.width();
@@ -539,7 +539,7 @@ mod tests {
     fn test_delete_creates_tombstone() {
         init_logging();
         info!("test_delete_creates_tombstone: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
         let issue = create_test_issue("bd-del1", "Test Delete");
         storage.create_issue(&issue, "tester").unwrap();
 
@@ -563,7 +563,7 @@ mod tests {
     fn test_delete_nonexistent_fails() {
         init_logging();
         info!("test_delete_nonexistent_fails: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
         let result = storage.delete_issue("bd-nope", "tester", "reason", None);
         assert!(result.is_err());
         info!("test_delete_nonexistent_fails: assertions passed");
@@ -573,7 +573,7 @@ mod tests {
     fn test_cascade_dependents_collection() {
         init_logging();
         info!("test_cascade_dependents_collection: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         // Create issues: A -> B -> C (C depends on B, B depends on A)
         let a = create_test_issue("bd-a", "Issue A");

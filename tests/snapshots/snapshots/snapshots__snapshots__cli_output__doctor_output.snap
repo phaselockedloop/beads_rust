@@ -9,6 +9,5 @@ OK sync_conflict_markers: No merge conflict markers found
 OK jsonl.parse: Parsed 0 records
 OK schema.tables
 OK schema.columns
-OK sqlite.integrity_check
 OK counts.db_vs_jsonl: Both have 0 records
 OK sync.metadata: External changes pending import

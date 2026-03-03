@@ -4,7 +4,7 @@ use crate::cli::InfoArgs;
 use crate::config;
 use crate::error::Result;
 use crate::output::OutputContext;
-use crate::storage::SqliteStorage;
+use crate::storage::JsonStorage;
 use crate::util::parse_id;
 use rich_rust::prelude::*;
 use serde::Serialize;
@@ -101,7 +101,7 @@ pub fn execute(args: &InfoArgs, cli: &config::CliOverrides, ctx: &OutputContext)
 }
 
 fn build_schema_info(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     config_map: Option<&HashMap<String, String>>,
 ) -> SchemaInfo {
     let mut ids = storage.get_all_ids().unwrap_or_default();

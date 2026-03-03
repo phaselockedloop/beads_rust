@@ -1484,7 +1484,7 @@ mod tests {
         let mut ws = TestWorkspace::new("harness", "test_workspace_basic");
         let result = ws.init_br();
         result.assert_success();
-        assert!(ws.file_exists(".beads/beads.db"));
+        assert!(ws.file_exists(".beads/issues.jsonl"));
         ws.finish(true);
     }
 

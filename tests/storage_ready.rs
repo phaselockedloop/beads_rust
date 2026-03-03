@@ -2,12 +2,12 @@
 //!
 //! Tests: `get_ready_issues` with various filters (assignee, unassigned, types,
 //! priorities, `labels_and`, `labels_or`, `include_deferred`, limit) and sort policies
-//! (Hybrid, Priority, Oldest). Real `SQLite`, no mocks.
+//! (Hybrid, Priority, Oldest). No mocks.
 
 mod common;
 
 use beads_rust::model::{DependencyType, IssueType, Priority, Status};
-use beads_rust::storage::{ReadyFilters, ReadySortPolicy, SqliteStorage};
+use beads_rust::storage::{ReadyFilters, ReadySortPolicy, JsonStorage};
 use common::{fixtures, test_db};
 
 // ============================================================================
@@ -15,7 +15,7 @@ use common::{fixtures, test_db};
 // ============================================================================
 
 fn ready_ids(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     filters: &ReadyFilters,
     sort: ReadySortPolicy,
 ) -> Vec<String> {

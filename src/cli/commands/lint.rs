@@ -7,7 +7,7 @@ use crate::config;
 use crate::error::{BeadsError, Result};
 use crate::model::{Issue, IssueType, Status};
 use crate::output::OutputContext;
-use crate::storage::{ListFilters, SqliteStorage};
+use crate::storage::{ListFilters, JsonStorage};
 use crate::util::id::{IdResolver, ResolverConfig};
 use rich_rust::prelude::*;
 use serde::Serialize;
@@ -260,7 +260,7 @@ fn build_filters(args: &LintArgs) -> Result<ListFilters> {
 }
 
 fn resolve_issues(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     beads_dir: &Path,
     args: &LintArgs,
     cli: &config::CliOverrides,

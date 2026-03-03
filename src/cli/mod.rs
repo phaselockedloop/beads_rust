@@ -613,7 +613,7 @@ fn csv_fields_completer(current: &OsStr) -> Vec<CompletionCandidate> {
     static_candidates_delimited(current, ',', CSV_FIELD_CANDIDATES)
 }
 
-/// Agent-first issue tracker (`SQLite` + JSONL)
+/// Agent-first issue tracker (JSONL)
 #[derive(Parser, Debug)]
 #[command(name = "br", author, version, about, long_about = None)]
 #[allow(clippy::struct_excessive_bools)]
@@ -649,7 +649,7 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub allow_stale: bool,
 
-    /// `SQLite` busy timeout in ms
+    /// Busy timeout in ms (ignored, kept for compatibility)
     #[arg(long, global = true)]
     pub lock_timeout: Option<u64>,
 
@@ -750,7 +750,7 @@ pub enum Commands {
         #[arg(long)]
         force: bool,
 
-        /// Backend type (ignored, always sqlite)
+        /// Backend type (ignored, always jsonl)
         #[arg(long)]
         backend: Option<String>,
     },

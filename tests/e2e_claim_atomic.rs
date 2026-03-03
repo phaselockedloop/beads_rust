@@ -1,14 +1,14 @@
 //! Atomic claim guard tests — verifies TOCTOU-safe claiming via IMMEDIATE transactions.
 
 use beads_rust::model::{Priority, Status};
-use beads_rust::storage::{IssueUpdate, SqliteStorage};
+use beads_rust::storage::{IssueUpdate, JsonStorage};
 use chrono::{TimeZone, Utc};
 use std::path::Path;
 use std::sync::{Arc, Barrier};
 use std::thread;
 
 /// Helper to create a minimal issue for testing.
-fn seed_issue(storage: &mut SqliteStorage, id: &str, assignee: Option<&str>) {
+fn seed_issue(storage: &mut JsonStorage, id: &str, assignee: Option<&str>) {
     let t = Utc.with_ymd_and_hms(2026, 1, 1, 0, 0, 0).unwrap();
     let issue = beads_rust::model::Issue {
         id: id.to_string(),
@@ -56,7 +56,7 @@ fn seed_issue(storage: &mut SqliteStorage, id: &str, assignee: Option<&str>) {
 
 #[test]
 fn test_claim_unassigned_succeeds() {
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
     seed_issue(&mut storage, "test-1", None);
 
     let update = IssueUpdate {
@@ -76,7 +76,7 @@ fn test_claim_unassigned_succeeds() {
 
 #[test]
 fn test_claim_already_assigned_different_actor_fails() {
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
     seed_issue(&mut storage, "test-2", Some("bob"));
 
     let update = IssueUpdate {
@@ -95,7 +95,7 @@ fn test_claim_already_assigned_different_actor_fails() {
 
 #[test]
 fn test_claim_same_actor_idempotent() {
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
     seed_issue(&mut storage, "test-3", Some("alice"));
 
     let update = IssueUpdate {
@@ -112,7 +112,7 @@ fn test_claim_same_actor_idempotent() {
 
 #[test]
 fn test_claim_exclusive_rejects_same_actor() {
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
     seed_issue(&mut storage, "test-4", Some("alice"));
 
     let update = IssueUpdate {
@@ -138,7 +138,7 @@ fn test_claim_exclusive_rejects_same_actor() {
 
 #[test]
 fn test_claim_whitespace_assignee_treated_as_unassigned() {
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
     seed_issue(&mut storage, "test-5", Some("   "));
 
     let update = IssueUpdate {
@@ -158,7 +158,7 @@ fn test_claim_whitespace_assignee_treated_as_unassigned() {
 
 #[test]
 fn test_claim_empty_string_assignee_treated_as_unassigned() {
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
     seed_issue(&mut storage, "test-6", Some(""));
 
     let update = IssueUpdate {
@@ -185,7 +185,7 @@ fn test_concurrent_claim_exactly_one_wins() {
 
     // Seed the issue
     {
-        let mut storage = SqliteStorage::open(Path::new(db_path)).unwrap();
+        let mut storage = JsonStorage::open(Path::new(db_path)).unwrap();
         seed_issue(&mut storage, "race-1", None);
     }
 
@@ -199,7 +199,7 @@ fn test_concurrent_claim_exactly_one_wins() {
             let path = path.clone();
             let actor = actor.to_string();
             thread::spawn(move || {
-                let mut storage = SqliteStorage::open(Path::new(&path)).unwrap();
+                let mut storage = JsonStorage::open(Path::new(&path)).unwrap();
                 barrier.wait();
 
                 let update = IssueUpdate {
@@ -230,7 +230,7 @@ fn test_concurrent_claim_different_issues_both_succeed() {
     let db_path = tmp.path().to_str().unwrap();
 
     {
-        let mut storage = SqliteStorage::open(Path::new(db_path)).unwrap();
+        let mut storage = JsonStorage::open(Path::new(db_path)).unwrap();
         seed_issue(&mut storage, "diff-1", None);
         seed_issue(&mut storage, "diff-2", None);
     }
@@ -242,7 +242,7 @@ fn test_concurrent_claim_different_issues_both_succeed() {
         let barrier = Arc::clone(&barrier);
         let path = path.clone();
         thread::spawn(move || {
-            let mut storage = SqliteStorage::open(Path::new(&path)).unwrap();
+            let mut storage = JsonStorage::open(Path::new(&path)).unwrap();
             barrier.wait();
             let update = IssueUpdate {
                 status: Some(Status::InProgress),
@@ -258,7 +258,7 @@ fn test_concurrent_claim_different_issues_both_succeed() {
     let h2 = {
         let barrier = Arc::clone(&barrier);
         thread::spawn(move || {
-            let mut storage = SqliteStorage::open(Path::new(&path)).unwrap();
+            let mut storage = JsonStorage::open(Path::new(&path)).unwrap();
             barrier.wait();
             let update = IssueUpdate {
                 status: Some(Status::InProgress),
@@ -277,7 +277,7 @@ fn test_concurrent_claim_different_issues_both_succeed() {
 
 #[test]
 fn test_non_claim_update_skips_guard() {
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
     seed_issue(&mut storage, "test-nc", Some("bob"));
 
     // Regular update (not a claim) should succeed even though assigned to someone else

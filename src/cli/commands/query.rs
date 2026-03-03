@@ -250,7 +250,7 @@ pub fn execute(
 
 fn query_save(
     args: &QuerySaveArgs,
-    storage: &mut crate::storage::SqliteStorage,
+    storage: &mut crate::storage::JsonStorage,
     ctx: &OutputContext,
 ) -> Result<()> {
     let name = args.name.trim();
@@ -306,7 +306,7 @@ fn query_save(
 
 fn query_run(
     args: &QueryRunArgs,
-    storage: &crate::storage::SqliteStorage,
+    storage: &crate::storage::JsonStorage,
     cli: &config::CliOverrides,
     _beads_dir: &Path,
     ctx: &OutputContext,
@@ -334,7 +334,7 @@ fn query_run(
     super::list::execute(&merged_args, ctx.is_json(), cli, ctx)
 }
 
-fn query_list(storage: &crate::storage::SqliteStorage, ctx: &OutputContext) -> Result<()> {
+fn query_list(storage: &crate::storage::JsonStorage, ctx: &OutputContext) -> Result<()> {
     let all_config = storage.get_all_config()?;
 
     let mut queries: Vec<QueryListItem> = Vec::new();
@@ -388,7 +388,7 @@ fn query_list(storage: &crate::storage::SqliteStorage, ctx: &OutputContext) -> R
 
 fn query_delete(
     args: &QueryDeleteArgs,
-    storage: &mut crate::storage::SqliteStorage,
+    storage: &mut crate::storage::JsonStorage,
     ctx: &OutputContext,
 ) -> Result<()> {
     let name = args.name.trim();

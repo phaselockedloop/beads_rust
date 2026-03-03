@@ -1,4 +1,4 @@
-//! Storage CRUD unit tests with real `SQLite` (no mocks).
+//! Storage CRUD unit tests (no mocks).
 //!
 //! Tests `create_issue`, `get_issue`, `update_issue`, `delete_issue` operations.
 //! Verifies event creation, dirty marking, and transaction behavior.
@@ -7,7 +7,7 @@
 mod common;
 
 use beads_rust::model::{DependencyType, EventType, Issue, IssueType, Priority, Status};
-use beads_rust::storage::{IssueUpdate, SqliteStorage};
+use beads_rust::storage::{IssueUpdate, JsonStorage};
 use chrono::{Duration, Utc};
 use common::{fixtures, test_db, test_db_with_dir};
 
@@ -696,7 +696,7 @@ fn data_persists_across_connections() {
     drop(storage);
 
     // Reopen and verify
-    let storage2 = SqliteStorage::open(&db_path).unwrap();
+    let storage2 = JsonStorage::open(&db_path).unwrap();
     let retrieved = storage2
         .get_issue(&issue.id)
         .unwrap()

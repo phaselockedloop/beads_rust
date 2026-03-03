@@ -1,5 +1,5 @@
 use beads_rust::model::{Issue, IssueType, Priority, Status};
-use beads_rust::storage::SqliteStorage;
+use beads_rust::storage::JsonStorage;
 use chrono::Utc;
 
 fn make_issue(id: &str, title: &str, status: Status) -> Issue {
@@ -51,7 +51,7 @@ fn test_pinned_status_blocks_dependents() {
     // This test verifies that an issue with Status::Pinned DOES block issues that depend on it.
     // Current hypothesis: rebuild_blocked_cache_impl misses 'pinned' in its status filter.
 
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
 
     // 1. Create Pinned Issue A
     let issue_a = make_issue("bd-A", "Pinned Blocker", Status::Pinned);
@@ -85,7 +85,7 @@ fn test_pinned_status_blocks_dependents() {
 #[test]
 fn test_custom_status_blocks_dependents() {
     // Verify that a custom status also blocks
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
 
     let issue_a = make_issue(
         "bd-A",

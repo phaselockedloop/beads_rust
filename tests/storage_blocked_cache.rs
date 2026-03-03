@@ -12,14 +12,14 @@
 mod common;
 
 use beads_rust::model::{DependencyType, Status};
-use beads_rust::storage::{IssueUpdate, ReadyFilters, ReadySortPolicy, SqliteStorage};
+use beads_rust::storage::{IssueUpdate, ReadyFilters, ReadySortPolicy, JsonStorage};
 use common::{fixtures, test_db};
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-fn blocked_ids(storage: &SqliteStorage) -> Vec<String> {
+fn blocked_ids(storage: &JsonStorage) -> Vec<String> {
     storage
         .get_blocked_issues()
         .unwrap()
@@ -28,7 +28,7 @@ fn blocked_ids(storage: &SqliteStorage) -> Vec<String> {
         .collect()
 }
 
-fn ready_ids(storage: &SqliteStorage) -> Vec<String> {
+fn ready_ids(storage: &JsonStorage) -> Vec<String> {
     storage
         .get_ready_issues(&ReadyFilters::default(), ReadySortPolicy::Priority)
         .unwrap()

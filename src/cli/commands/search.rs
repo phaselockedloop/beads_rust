@@ -10,7 +10,7 @@ use crate::format::{
 };
 use crate::model::{IssueType, Priority, Status};
 use crate::output::{IssueTable, IssueTableColumns, OutputContext, OutputMode};
-use crate::storage::{ListFilters, SqliteStorage};
+use crate::storage::{ListFilters, JsonStorage};
 use chrono::Utc;
 use regex::{Regex, RegexBuilder};
 use std::collections::{HashMap, HashSet};
@@ -347,7 +347,7 @@ fn needs_client_filters(args: &ListArgs) -> bool {
 }
 
 fn apply_client_filters(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     issues: Vec<crate::model::Issue>,
     args: &ListArgs,
 ) -> Result<Vec<crate::model::Issue>> {
@@ -536,7 +536,7 @@ mod tests {
 
     #[test]
     fn test_search_matches_title_description_id() {
-        let mut storage = SqliteStorage::open_memory().expect("db");
+        let mut storage = JsonStorage::open_memory().expect("db");
         let t1 = Utc.with_ymd_and_hms(2025, 1, 1, 0, 0, 0).unwrap();
         let t2 = Utc.with_ymd_and_hms(2025, 1, 2, 0, 0, 0).unwrap();
         let t3 = Utc.with_ymd_and_hms(2025, 1, 3, 0, 0, 0).unwrap();

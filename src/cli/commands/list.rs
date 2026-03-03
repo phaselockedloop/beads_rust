@@ -10,7 +10,7 @@ use crate::format::csv;
 use crate::format::{IssueWithCounts, TextFormatOptions, format_issue_line_with, terminal_width};
 use crate::model::{IssueType, Priority, Status};
 use crate::output::{IssueTable, IssueTableColumns, OutputContext, OutputMode};
-use crate::storage::{ListFilters, SqliteStorage};
+use crate::storage::{ListFilters, JsonStorage};
 use chrono::Utc;
 use std::collections::HashSet;
 use std::io::IsTerminal;
@@ -259,7 +259,7 @@ fn needs_client_filters(args: &ListArgs) -> bool {
 }
 
 fn apply_client_filters(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     issues: Vec<crate::model::Issue>,
     args: &ListArgs,
 ) -> Result<Vec<crate::model::Issue>> {

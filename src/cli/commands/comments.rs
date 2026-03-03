@@ -5,7 +5,7 @@ use crate::config;
 use crate::error::{BeadsError, Result};
 use crate::model::Comment;
 use crate::output::{OutputContext, OutputMode};
-use crate::storage::SqliteStorage;
+use crate::storage::JsonStorage;
 use crate::util::id::{IdResolver, ResolverConfig, find_matching_ids};
 use chrono::{DateTime, Utc};
 use rich_rust::prelude::*;
@@ -67,7 +67,7 @@ pub fn execute(
 
 fn add_comment(
     args: &CommentAddArgs,
-    storage: &mut SqliteStorage,
+    storage: &mut JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     actor: Option<&str>,
@@ -99,7 +99,7 @@ fn add_comment(
 
 fn list_comments(
     args: &CommentListArgs,
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     json: bool,
@@ -111,7 +111,7 @@ fn list_comments(
 
 fn list_comments_by_id(
     id: &str,
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     _json: bool,
@@ -282,7 +282,7 @@ fn format_relative_time(timestamp: DateTime<Utc>, now: DateTime<Utc>) -> String 
 }
 
 fn resolve_issue_id(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     input: &str,
