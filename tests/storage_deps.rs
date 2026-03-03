@@ -2,17 +2,17 @@
 //!
 //! Tests: `add_dependency`, `remove_dependency`, `get_dependencies`, `get_dependents`,
 //! cycle detection, deep hierarchies, diamond patterns, blocked cache invalidation.
-//! Real `SQLite`, no mocks.
+//! No mocks.
 
 #![allow(clippy::similar_names)]
 
 mod common;
 
 use beads_rust::model::{DependencyType, EventType, Status};
-use beads_rust::storage::{ReadyFilters, ReadySortPolicy, SqliteStorage};
+use beads_rust::storage::{ReadyFilters, ReadySortPolicy, JsonStorage};
 use common::{fixtures, test_db};
 
-fn blocked_ids_for(storage: &SqliteStorage) -> Vec<String> {
+fn blocked_ids_for(storage: &JsonStorage) -> Vec<String> {
     storage
         .get_blocked_issues()
         .unwrap()

@@ -2,7 +2,7 @@
 source: tests/snapshots/cli_output.rs
 expression: normalize_output(&output.stdout)
 ---
-ID-REDACTED issue tracker (SQLite + JSONL)
+ID-REDACTED issue tracker (JSONL)
 
 Usage: br [OPTIONS] <COMMAND>
 
@@ -56,7 +56,7 @@ Options:
       --ID-REDACTED                Skip auto JSONL export
       --ID-REDACTED               Skip auto import check
       --ID-REDACTED                  Allow stale DB (bypass freshness check warning)
-      --ID-REDACTED <LOCK_TIMEOUT>  `SQLite` busy timeout in ms
+      --ID-REDACTED <LOCK_TIMEOUT>  Busy timeout in ms (ignored, kept for compatibility)
       --no-db                        ID-REDACTED mode (no DB connection)
   -v, --verbose...                   Increase logging verbosity (-v, -vv)
   -q, --quiet                        Quiet mode (no output except errors)

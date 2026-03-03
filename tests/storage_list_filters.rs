@@ -1,4 +1,4 @@
-//! Storage list filter unit tests with real `SQLite` (no mocks).
+//! Storage list filter unit tests (no mocks).
 //!
 //! Tests `list_issues` with comprehensive filter combinations including:
 //! - Status filters (open, closed, `in_progress`)
@@ -470,7 +470,7 @@ fn filter_by_title_contains_case_insensitive() {
     storage.create_issue(&issue2, "tester").unwrap();
     storage.create_issue(&issue3, "tester").unwrap();
 
-    // SQLite LIKE is case-insensitive by default
+    // Title search is case-insensitive
     let filters = ListFilters {
         title_contains: Some("api".to_string()),
         ..Default::default()

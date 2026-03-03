@@ -10,7 +10,7 @@ use crate::config;
 use crate::error::{BeadsError, Result};
 use crate::model::{DependencyType, Issue, Status};
 use crate::output::{OutputContext, OutputMode};
-use crate::storage::{ListFilters, SqliteStorage};
+use crate::storage::{ListFilters, JsonStorage};
 use crate::util::id::{IdResolver, ResolverConfig, find_matching_ids};
 use rich_rust::prelude::*;
 use serde::Serialize;
@@ -80,7 +80,7 @@ pub fn execute(args: &GraphArgs, cli: &config::CliOverrides, ctx: &OutputContext
 
 /// Show graph for a single issue (traverse dependents only).
 fn graph_single(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     root_id: &str,
     compact: bool,
     ctx: &OutputContext,
@@ -199,7 +199,7 @@ fn graph_single(
 
 /// Show graph for all `open`/`in_progress`/`blocked` issues.
 #[allow(clippy::too_many_lines)]
-fn graph_all(storage: &SqliteStorage, compact: bool, ctx: &OutputContext) -> Result<()> {
+fn graph_all(storage: &JsonStorage, compact: bool, ctx: &OutputContext) -> Result<()> {
     // Get all open/in_progress/blocked issues
     let filters = ListFilters {
         statuses: Some(vec![Status::Open, Status::InProgress, Status::Blocked]),
@@ -478,7 +478,7 @@ fn calculate_depths(
 }
 
 fn resolve_issue_id(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     input: &str,
@@ -1075,7 +1075,8 @@ mod tests {
 
     #[test]
     fn test_graph_all_cycle_robustness() {
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        use crate::model::Dependency;
+        let mut storage = JsonStorage::open_memory().unwrap();
         let t1 = chrono::Utc::now();
 
         let root = Issue {
@@ -1088,6 +1089,7 @@ mod tests {
             updated_at: t1,
             ..Default::default()
         };
+        // Pre-build cyclic dependencies: bd-1 waits-for root AND waits-for bd-2
         let i1 = Issue {
             id: "bd-1".to_string(),
             title: "A".to_string(),
@@ -1096,8 +1098,29 @@ mod tests {
             issue_type: crate::model::IssueType::Task,
             created_at: t1,
             updated_at: t1,
+            dependencies: vec![
+                Dependency {
+                    issue_id: "bd-1".to_string(),
+                    depends_on_id: "root".to_string(),
+                    dep_type: crate::model::DependencyType::WaitsFor,
+                    created_at: t1,
+                    created_by: Some("test".to_string()),
+                    metadata: None,
+                    thread_id: None,
+                },
+                Dependency {
+                    issue_id: "bd-1".to_string(),
+                    depends_on_id: "bd-2".to_string(),
+                    dep_type: crate::model::DependencyType::WaitsFor,
+                    created_at: t1,
+                    created_by: Some("test".to_string()),
+                    metadata: None,
+                    thread_id: None,
+                },
+            ],
             ..Default::default()
         };
+        // bd-2 waits-for bd-1 (completing the cycle)
         let i2 = Issue {
             id: "bd-2".to_string(),
             title: "B".to_string(),
@@ -1106,25 +1129,21 @@ mod tests {
             issue_type: crate::model::IssueType::Task,
             created_at: t1,
             updated_at: t1,
+            dependencies: vec![Dependency {
+                issue_id: "bd-2".to_string(),
+                depends_on_id: "bd-1".to_string(),
+                dep_type: crate::model::DependencyType::WaitsFor,
+                created_at: t1,
+                created_by: Some("test".to_string()),
+                metadata: None,
+                thread_id: None,
+            }],
             ..Default::default()
         };
 
         storage.create_issue(&root, "test").unwrap();
         storage.create_issue(&i1, "test").unwrap();
         storage.create_issue(&i2, "test").unwrap();
-
-        // Root blocks A
-        storage
-            .add_dependency("bd-1", "root", "waits-for", "test")
-            .unwrap();
-        // A blocks B
-        storage
-            .add_dependency("bd-2", "bd-1", "waits-for", "test")
-            .unwrap();
-        // B blocks A (cycle)
-        storage
-            .add_dependency("bd-1", "bd-2", "waits-for", "test")
-            .unwrap();
 
         let ctx = OutputContext::from_flags(true, false, true); // JSON mode
 

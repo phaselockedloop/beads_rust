@@ -8,5 +8,3 @@ pub mod json;
 
 pub use json::{IssueUpdate, JsonStorage, ListFilters, ReadyFilters, ReadySortPolicy};
 
-/// Type alias for backwards compatibility with command code.
-pub type SqliteStorage = JsonStorage;

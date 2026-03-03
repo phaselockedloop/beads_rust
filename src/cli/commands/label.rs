@@ -6,7 +6,7 @@ use crate::cli::{LabelAddArgs, LabelCommands, LabelListArgs, LabelRemoveArgs, La
 use crate::config;
 use crate::error::{BeadsError, Result};
 use crate::output::{OutputContext, OutputMode};
-use crate::storage::SqliteStorage;
+use crate::storage::JsonStorage;
 use crate::util::id::{IdResolver, ResolverConfig, find_matching_ids};
 use rich_rust::prelude::*;
 use serde::Serialize;
@@ -128,7 +128,7 @@ fn parse_issues_and_label(
 
 fn label_add(
     args: &LabelAddArgs,
-    storage: &mut SqliteStorage,
+    storage: &mut JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     actor: &str,
@@ -186,7 +186,7 @@ fn label_add(
 
 fn label_remove(
     args: &LabelRemoveArgs,
-    storage: &mut SqliteStorage,
+    storage: &mut JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     actor: &str,
@@ -236,7 +236,7 @@ fn label_remove(
 
 fn label_list(
     args: &LabelListArgs,
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     _json: bool,
@@ -281,7 +281,7 @@ fn label_list(
     Ok(())
 }
 
-fn label_list_all(storage: &SqliteStorage, _json: bool, ctx: &OutputContext) -> Result<()> {
+fn label_list_all(storage: &JsonStorage, _json: bool, ctx: &OutputContext) -> Result<()> {
     let labels_with_counts = storage.get_unique_labels_with_counts()?;
 
     let label_counts: Vec<LabelCount> = labels_with_counts
@@ -315,7 +315,7 @@ fn label_list_all(storage: &SqliteStorage, _json: bool, ctx: &OutputContext) -> 
 
 fn label_rename(
     args: &LabelRenameArgs,
-    storage: &mut SqliteStorage,
+    storage: &mut JsonStorage,
     actor: &str,
     _json: bool,
     ctx: &OutputContext,
@@ -369,7 +369,7 @@ fn label_rename(
 }
 
 fn resolve_issue_id(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     input: &str,

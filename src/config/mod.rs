@@ -13,7 +13,7 @@ pub mod routing;
 
 use crate::error::{BeadsError, Result};
 use crate::model::{IssueType, Priority};
-use crate::storage::SqliteStorage;
+use crate::storage::JsonStorage;
 use crate::util::id::IdConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -42,9 +42,14 @@ const EXCLUDED_JSONL_FILES: &[&str] = &[
     "sync_base.jsonl",
 ];
 
+fn default_db_filename() -> String {
+    DEFAULT_DB_FILENAME.to_string()
+}
+
 /// Startup metadata describing DB + JSONL paths.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Metadata {
+    #[serde(default = "default_db_filename")]
     pub database: String,
     pub jsonl_export: String,
     #[serde(default)]
@@ -291,20 +296,20 @@ pub fn open_storage(
     beads_dir: &Path,
     db_override: Option<&PathBuf>,
     _lock_timeout: Option<u64>,
-) -> Result<(SqliteStorage, ConfigPaths)> {
+) -> Result<(JsonStorage, ConfigPaths)> {
     let startup_layer = load_startup_config(beads_dir)?;
     let resolved_db_override = db_override
         .cloned()
         .or_else(|| db_override_from_layer(&startup_layer));
     let paths = ConfigPaths::resolve(beads_dir, resolved_db_override.as_ref())?;
-    let storage = SqliteStorage::open(&paths.jsonl_path)?;
+    let storage = JsonStorage::open(&paths.jsonl_path)?;
     Ok((storage, paths))
 }
 
 /// Storage handle with no-db awareness.
 #[derive(Debug)]
 pub struct OpenStorageResult {
-    pub storage: SqliteStorage,
+    pub storage: JsonStorage,
     pub paths: ConfigPaths,
 }
 
@@ -330,9 +335,9 @@ pub fn open_storage_with_cli(beads_dir: &Path, cli: &CliOverrides) -> Result<Ope
     // In --no-db mode, use an in-memory store (no persistence).
     // Otherwise open from JSONL file.
     let storage = if no_db {
-        SqliteStorage::open_memory()?
+        JsonStorage::open_memory()?
     } else {
-        SqliteStorage::open(&paths.jsonl_path)?
+        JsonStorage::open(&paths.jsonl_path)?
     };
 
     Ok(OpenStorageResult { storage, paths })
@@ -501,7 +506,7 @@ impl ConfigLayer {
     /// # Errors
     ///
     /// Returns an error if config table lookup fails.
-    pub fn from_db(storage: &SqliteStorage) -> Result<Self> {
+    pub fn from_db(storage: &JsonStorage) -> Result<Self> {
         let mut layer = Self::default();
         let map = storage.get_all_config()?;
         for (key, value) in map {
@@ -646,7 +651,7 @@ pub fn default_config_layer() -> ConfigLayer {
 /// Returns an error if any config file cannot be read or parsed, or DB access fails.
 pub fn load_config(
     beads_dir: &Path,
-    storage: Option<&SqliteStorage>,
+    storage: Option<&JsonStorage>,
     cli: &CliOverrides,
 ) -> Result<ConfigLayer> {
     let defaults = default_config_layer();
@@ -1029,7 +1034,7 @@ fn yaml_scalar_to_string(value: &serde_yml::Value) -> Option<String> {
 mod tests {
     use super::*;
     use crate::model::{IssueType, Priority};
-    use crate::storage::SqliteStorage;
+    use crate::storage::JsonStorage;
     use tempfile::TempDir;
 
     #[test]
@@ -1167,7 +1172,7 @@ labels:
 
     #[test]
     fn db_layer_skips_startup_keys() {
-        let mut storage = SqliteStorage::open_memory().expect("storage");
+        let mut storage = JsonStorage::open_memory().expect("storage");
         storage.set_config("no-db", "true").expect("set no-db");
         storage
             .set_config("issue_prefix", "bd")

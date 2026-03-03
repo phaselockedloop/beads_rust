@@ -11,7 +11,7 @@ use crate::format::{
 };
 use crate::model::{IssueType, Status};
 use crate::output::{OutputContext, OutputMode};
-use crate::storage::{ListFilters, SqliteStorage};
+use crate::storage::{ListFilters, JsonStorage};
 use chrono::Utc;
 use rich_rust::prelude::*;
 use std::collections::BTreeMap;
@@ -112,7 +112,7 @@ pub fn execute(
 /// Compute summary statistics.
 #[allow(clippy::cast_precision_loss)]
 fn compute_summary(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     issues: &[crate::model::Issue],
 ) -> Result<StatsSummary> {
     let mut open = 0;
@@ -216,7 +216,7 @@ fn compute_summary(
 }
 
 /// Count epics that have all children closed.
-fn count_epics_eligible_for_closure(storage: &SqliteStorage, epic_ids: &[String]) -> Result<usize> {
+fn count_epics_eligible_for_closure(storage: &JsonStorage, epic_ids: &[String]) -> Result<usize> {
     let mut eligible = 0;
 
     for epic_id in epic_ids {
@@ -316,7 +316,7 @@ fn compute_assignee_breakdown(issues: &[crate::model::Issue]) -> Breakdown {
 
 /// Compute breakdown by label.
 fn compute_label_breakdown(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     issues: &[crate::model::Issue],
 ) -> Result<Breakdown> {
     let mut counts: BTreeMap<String, usize> = BTreeMap::new();
@@ -692,7 +692,7 @@ fn capitalize(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::model::{Issue, IssueType, Priority, Status};
-    use crate::storage::SqliteStorage;
+    use crate::storage::JsonStorage;
     use chrono::Utc;
 
     fn make_issue(id: &str, status: Status, issue_type: IssueType) -> Issue {
@@ -808,7 +808,7 @@ mod tests {
 
     #[test]
     fn test_compute_summary_basic() {
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let first_issue = make_issue("t-1", Status::Open, IssueType::Task);
         let second_issue = make_issue("t-2", Status::InProgress, IssueType::Task);
@@ -830,7 +830,7 @@ mod tests {
 
     #[test]
     fn test_blocked_by_blocks_deps() {
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let blocking_issue = make_issue("t-1", Status::Open, IssueType::Task);
         let dependent_issue = make_issue("t-2", Status::Open, IssueType::Task);
@@ -848,7 +848,7 @@ mod tests {
 
     #[test]
     fn test_blocked_cleared_when_blocker_closed() {
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let mut blocking_issue = make_issue("t-1", Status::Closed, IssueType::Task);
         blocking_issue.closed_at = Some(Utc::now());
@@ -867,7 +867,7 @@ mod tests {
 
     #[test]
     fn test_label_breakdown() {
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let first_issue = make_issue("t-1", Status::Open, IssueType::Task);
         let second_issue = make_issue("t-2", Status::Open, IssueType::Task);

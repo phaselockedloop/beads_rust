@@ -3,7 +3,7 @@ use crate::config;
 use crate::error::{BeadsError, Result};
 use crate::model::{Dependency, DependencyType, Issue, IssueType, Priority, Status};
 use crate::output::OutputContext;
-use crate::storage::SqliteStorage;
+use crate::storage::JsonStorage;
 use crate::util::id::{IdGenerator, child_id};
 use crate::util::markdown_import::{parse_dependency, parse_markdown_file};
 use crate::util::time::parse_flexible_timestamp;
@@ -109,7 +109,7 @@ pub fn execute(args: &CreateArgs, cli: &config::CliOverrides, ctx: &OutputContex
 /// - Storage write fails
 #[allow(clippy::too_many_lines)]
 pub fn create_issue_impl(
-    storage: &mut SqliteStorage,
+    storage: &mut JsonStorage,
     args: &CreateArgs,
     config: &CreateConfig,
 ) -> Result<Issue> {
@@ -663,8 +663,8 @@ mod tests {
         }
     }
 
-    fn setup_memory_storage() -> SqliteStorage {
-        SqliteStorage::open_memory().expect("failed to open memory db")
+    fn setup_memory_storage() -> JsonStorage {
+        JsonStorage::open_memory().expect("failed to open memory db")
     }
 
     #[test]

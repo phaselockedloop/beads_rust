@@ -711,7 +711,7 @@ mod golden_snapshot_tests {
 
     #[test]
     fn test_normalize_line_numbers() {
-        let input = "Error at src/storage/sqlite.rs:1234: connection failed";
+        let input = "Error at src/storage/json.rs:1234: connection failed";
         let snapshot = TextSnapshot::golden(input);
         assert!(snapshot.normalized.contains(".rs:LINE:"));
         assert!(!snapshot.normalized.contains(":1234:"));

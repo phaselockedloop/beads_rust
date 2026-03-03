@@ -230,7 +230,7 @@ fn filter_by_priority(issues: &mut Vec<BlockedIssue>, priorities: &[String]) -> 
 
 fn filter_by_labels(
     issues: &mut Vec<BlockedIssue>,
-    storage: &crate::storage::SqliteStorage,
+    storage: &crate::storage::JsonStorage,
     labels: &[String],
 ) -> Result<()> {
     let mut filtered = Vec::with_capacity(issues.len());
@@ -252,7 +252,7 @@ fn filter_by_labels(
 fn print_text_output(
     blocked_issues: &[BlockedIssue],
     verbose: bool,
-    storage: &crate::storage::SqliteStorage,
+    storage: &crate::storage::JsonStorage,
     max_width: usize,
 ) {
     use crate::format::truncate_title;
@@ -329,7 +329,7 @@ fn blocker_id_from_ref(blocker_ref: &str) -> &str {
 fn render_blocked_rich(
     blocked_issues: &[BlockedIssue],
     verbose: bool,
-    storage: &crate::storage::SqliteStorage,
+    storage: &crate::storage::JsonStorage,
     max_width: usize,
 ) {
     use crate::format::truncate_title;

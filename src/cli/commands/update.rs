@@ -5,7 +5,7 @@ use crate::config;
 use crate::error::{BeadsError, Result};
 use crate::model::{DependencyType, Issue, Status};
 use crate::output::OutputContext;
-use crate::storage::{IssueUpdate, SqliteStorage};
+use crate::storage::{IssueUpdate, JsonStorage};
 use crate::util::id::{IdResolver, ResolverConfig};
 use crate::util::time::parse_flexible_timestamp;
 use crate::validation::LabelValidator;
@@ -190,7 +190,7 @@ fn print_update_summary(id: &str, title: &str, before: Option<&Issue>, after: &I
     }
 }
 
-fn build_resolver(config_layer: &config::ConfigLayer, _storage: &SqliteStorage) -> IdResolver {
+fn build_resolver(config_layer: &config::ConfigLayer, _storage: &JsonStorage) -> IdResolver {
     let id_config = config::id_config_from_layer(config_layer);
     IdResolver::new(ResolverConfig::with_prefix(id_config.prefix))
 }
@@ -199,7 +199,7 @@ fn resolve_target_ids(
     args: &UpdateArgs,
     beads_dir: &std::path::Path,
     resolver: &IdResolver,
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
 ) -> Result<Vec<String>> {
     let mut ids = args.ids.clone();
     if ids.is_empty() {
@@ -306,7 +306,7 @@ fn optional_date_field(value: Option<&str>) -> Result<Option<Option<DateTime<Utc
         .transpose()
 }
 
-fn resolve_issue_id(resolver: &IdResolver, storage: &SqliteStorage, input: &str) -> Result<String> {
+fn resolve_issue_id(resolver: &IdResolver, storage: &JsonStorage, input: &str) -> Result<String> {
     resolver
         .resolve(
             input,
@@ -317,7 +317,7 @@ fn resolve_issue_id(resolver: &IdResolver, storage: &SqliteStorage, input: &str)
 }
 
 fn apply_parent_update(
-    storage: &mut SqliteStorage,
+    storage: &mut JsonStorage,
     issue_id: &str,
     parent: Option<&str>,
     resolver: &IdResolver,

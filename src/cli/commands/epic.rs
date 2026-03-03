@@ -5,7 +5,7 @@ use crate::config;
 use crate::error::Result;
 use crate::model::{EpicStatus, IssueType, Status};
 use crate::output::{OutputContext, OutputMode};
-use crate::storage::{IssueUpdate, ListFilters, SqliteStorage};
+use crate::storage::{IssueUpdate, ListFilters, JsonStorage};
 use chrono::Utc;
 use crossterm::style::Stylize;
 use rich_rust::prelude::*;
@@ -156,7 +156,7 @@ fn execute_close_eligible(
     Ok(())
 }
 
-fn load_epic_statuses(storage: &SqliteStorage) -> Result<Vec<EpicStatus>> {
+fn load_epic_statuses(storage: &JsonStorage) -> Result<Vec<EpicStatus>> {
     let filters = ListFilters {
         types: Some(vec![IssueType::Epic]),
         include_closed: false,
@@ -487,7 +487,7 @@ mod tests {
 
     #[test]
     fn epic_status_tracks_children_and_eligibility() {
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let epic = base_issue("bd-epic-1", "Epic", IssueType::Epic, Status::Open);
         let task1 = base_issue("bd-task-1", "Task 1", IssueType::Task, Status::Open);
@@ -537,7 +537,7 @@ mod tests {
 
     #[test]
     fn epic_status_childless_epic_not_eligible() {
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
         let epic = base_issue("bd-epic-2", "Childless", IssueType::Epic, Status::Open);
         storage.create_issue(&epic, "tester").unwrap();
 

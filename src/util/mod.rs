@@ -64,13 +64,13 @@ pub fn last_touched_path(beads_dir: &Path) -> PathBuf {
 
 const DB_FILE: &str = "beads.db";
 
-/// Build the path to the SQLite database file.
+/// Build the path to the database file.
 ///
 /// The file location is determined by:
 /// 1. `BEADS_CACHE_DIR` environment variable (if set)
 /// 2. The `.beads` directory (default)
 ///
-/// This allows storing the database (and its WAL/SHM files) on a fast local
+/// This allows storing the database on a fast local
 /// filesystem when the `.beads` directory is on a slow network mount.
 #[must_use]
 pub fn db_path(beads_dir: &Path) -> PathBuf {

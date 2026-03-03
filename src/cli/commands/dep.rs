@@ -9,7 +9,7 @@ use crate::error::{BeadsError, Result};
 use crate::format::truncate_title;
 use crate::model::DependencyType;
 use crate::output::{OutputContext, OutputMode};
-use crate::storage::SqliteStorage;
+use crate::storage::JsonStorage;
 use crate::util::id::{IdResolver, ResolverConfig, find_matching_ids};
 use rich_rust::prelude::*;
 use serde::Serialize;
@@ -116,7 +116,7 @@ struct CyclesResult {
 
 fn dep_add(
     args: &DepAddArgs,
-    storage: &mut SqliteStorage,
+    storage: &mut JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     actor: &str,
@@ -222,7 +222,7 @@ fn dep_add(
 
 fn dep_remove(
     args: &DepRemoveArgs,
-    storage: &mut SqliteStorage,
+    storage: &mut JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     actor: &str,
@@ -280,7 +280,7 @@ fn dep_remove(
 #[allow(clippy::too_many_arguments)]
 fn dep_list(
     args: &DepListArgs,
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     external_db_paths: &HashMap<String, PathBuf>,
@@ -514,7 +514,7 @@ fn apply_external_dep_list_metadata(
 #[allow(clippy::too_many_lines)]
 fn dep_tree(
     args: &DepTreeArgs,
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     external_db_paths: &HashMap<String, PathBuf>,
@@ -779,7 +779,7 @@ fn parse_external_dep_id(dep_id: &str) -> Option<(String, String)> {
 
 fn dep_cycles(
     _args: &DepCyclesArgs,
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     _json: bool,
     ctx: &OutputContext,
 ) -> Result<()> {
@@ -847,7 +847,7 @@ fn render_cycles_rich(ctx: &OutputContext, cycles: &[Vec<String>], count: usize)
 }
 
 fn resolve_issue_id(
-    storage: &SqliteStorage,
+    storage: &JsonStorage,
     resolver: &IdResolver,
     all_ids: &[String],
     input: &str,
@@ -952,7 +952,7 @@ mod tests {
     fn test_add_dependency() {
         init_test_logging();
         info!("test_add_dependency: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let issue1 = make_test_issue("bd-001", "Issue 1");
         let issue2 = make_test_issue("bd-002", "Issue 2");
@@ -977,7 +977,7 @@ mod tests {
     fn test_remove_dependency() {
         init_test_logging();
         info!("test_remove_dependency: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let issue1 = make_test_issue("bd-001", "Issue 1");
         let issue2 = make_test_issue("bd-002", "Issue 2");
@@ -1005,7 +1005,7 @@ mod tests {
     fn test_get_dependencies() {
         init_test_logging();
         info!("test_get_dependencies: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let issue1 = make_test_issue("bd-001", "Issue 1");
         let issue2 = make_test_issue("bd-002", "Issue 2");
@@ -1033,7 +1033,7 @@ mod tests {
     fn test_get_dependents() {
         init_test_logging();
         info!("test_get_dependents: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let issue1 = make_test_issue("bd-001", "Issue 1");
         let issue2 = make_test_issue("bd-002", "Issue 2");
@@ -1061,7 +1061,7 @@ mod tests {
     fn test_cycle_detection_simple() {
         init_test_logging();
         info!("test_cycle_detection_simple: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let issue1 = make_test_issue("bd-001", "Issue 1");
         let issue2 = make_test_issue("bd-002", "Issue 2");
@@ -1085,7 +1085,7 @@ mod tests {
     fn test_cycle_detection_transitive() {
         init_test_logging();
         info!("test_cycle_detection_transitive: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let issue1 = make_test_issue("bd-001", "Issue 1");
         let issue2 = make_test_issue("bd-002", "Issue 2");
@@ -1120,7 +1120,7 @@ mod tests {
     fn test_no_false_positive_cycle() {
         init_test_logging();
         info!("test_no_false_positive_cycle: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let issue1 = make_test_issue("bd-001", "Issue 1");
         let issue2 = make_test_issue("bd-002", "Issue 2");

@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
 use beads_rust::model::Status;
-use beads_rust::storage::SqliteStorage;
+use beads_rust::storage::JsonStorage;
 use tracing::info;
 
-pub fn assert_issue_exists(storage: &SqliteStorage, id: &str) {
+pub fn assert_issue_exists(storage: &JsonStorage, id: &str) {
     info!("Asserting issue exists: {}", id);
     let issue = storage
         .get_issue(id)
@@ -12,7 +12,7 @@ pub fn assert_issue_exists(storage: &SqliteStorage, id: &str) {
     assert!(issue.is_some(), "expected issue {id} to exist");
 }
 
-pub fn assert_status(storage: &SqliteStorage, id: &str, expected: &Status) {
+pub fn assert_status(storage: &JsonStorage, id: &str, expected: &Status) {
     info!("Asserting status of {} is {}", id, expected);
     let issue = storage
         .get_issue(id)

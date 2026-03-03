@@ -2,7 +2,7 @@ use std::fs;
 
 mod common;
 
-use beads_rust::storage::SqliteStorage;
+use beads_rust::storage::JsonStorage;
 use common::cli::{BrWorkspace, run_br, run_br_with_env};
 
 #[test]
@@ -14,8 +14,8 @@ fn e2e_config_precedence_env_project_user_db() {
     assert!(init.status.success(), "init failed: {}", init.stderr);
 
     // DB layer (lowest non-default)
-    let db_path = workspace.root.join(".beads").join("beads.db");
-    let mut storage = SqliteStorage::open(&db_path).expect("open db");
+    let db_path = workspace.root.join(".beads").join("issues.jsonl");
+    let mut storage = JsonStorage::open(&db_path).expect("open db");
     storage
         .set_config("issue_prefix", "DB")
         .expect("set db issue_prefix");
@@ -149,8 +149,8 @@ fn e2e_config_precedence_includes_legacy_layer() {
     assert!(init.status.success(), "init failed: {}", init.stderr);
 
     // DB layer (lowest non-default)
-    let db_path = actual_workspace.root.join(".beads").join("beads.db");
-    let mut storage = SqliteStorage::open(&db_path).expect("open db");
+    let db_path = actual_workspace.root.join(".beads").join("issues.jsonl");
+    let mut storage = JsonStorage::open(&db_path).expect("open db");
     storage
         .set_config("issue_prefix", "DB")
         .expect("set db issue_prefix");
@@ -221,8 +221,8 @@ fn e2e_config_precedence_legacy_used_when_user_missing() {
     assert!(init.status.success(), "init failed: {}", init.stderr);
 
     // DB layer (lowest non-default)
-    let db_path = actual_workspace.root.join(".beads").join("beads.db");
-    let mut storage = SqliteStorage::open(&db_path).expect("open db");
+    let db_path = actual_workspace.root.join(".beads").join("issues.jsonl");
+    let mut storage = JsonStorage::open(&db_path).expect("open db");
     storage
         .set_config("default_priority", "1")
         .expect("set db default_priority");

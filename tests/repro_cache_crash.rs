@@ -1,5 +1,5 @@
 use beads_rust::model::{Issue, IssueType, Priority, Status};
-use beads_rust::storage::SqliteStorage;
+use beads_rust::storage::JsonStorage;
 use chrono::Utc;
 
 fn make_issue(id: &str, title: &str) -> Issue {
@@ -48,7 +48,7 @@ fn make_issue(id: &str, title: &str) -> Issue {
 
 #[test]
 fn test_rebuild_blocked_cache_crash_with_multiple_parents() {
-    let mut storage = SqliteStorage::open_memory().unwrap();
+    let mut storage = JsonStorage::open_memory().unwrap();
 
     // Create blockers D and E (open status)
     storage

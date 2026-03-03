@@ -240,7 +240,7 @@ mod tests {
     use super::format_issue_details;
     use crate::format::{IssueDetails, IssueWithDependencyMetadata};
     use crate::model::{Comment, Issue, IssueType, Priority, Status};
-    use crate::storage::SqliteStorage;
+    use crate::storage::JsonStorage;
     use crate::util::id::{IdResolver, ResolverConfig};
     use chrono::{TimeZone, Utc};
     use tracing::info;
@@ -297,7 +297,7 @@ mod tests {
     fn test_show_retrieves_issue_by_id() {
         init_logging();
         info!("test_show_retrieves_issue_by_id: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let issue = make_test_issue("bd-001", "Test Issue");
         storage.create_issue(&issue, "tester").unwrap();
@@ -314,7 +314,7 @@ mod tests {
     fn test_show_returns_none_for_missing_id() {
         init_logging();
         info!("test_show_returns_none_for_missing_id: starting");
-        let storage = SqliteStorage::open_memory().unwrap();
+        let storage = JsonStorage::open_memory().unwrap();
 
         let retrieved = storage.get_issue("nonexistent").unwrap();
         assert!(retrieved.is_none());
@@ -325,7 +325,7 @@ mod tests {
     fn test_show_multiple_issues() {
         init_logging();
         info!("test_show_multiple_issues: starting");
-        let mut storage = SqliteStorage::open_memory().unwrap();
+        let mut storage = JsonStorage::open_memory().unwrap();
 
         let issue1 = make_test_issue("bd-001", "First Issue");
         let issue2 = make_test_issue("bd-002", "Second Issue");

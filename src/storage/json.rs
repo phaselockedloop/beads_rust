@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-// ─── Public types (previously in sqlite.rs) ──────────────────────────────────
+// ─── Public types ─────────────────────────────────────────────────────────────
 
 /// Filter options for listing issues.
 #[derive(Debug, Clone, Default)]
