@@ -135,7 +135,6 @@ pub fn execute(args: QuickArgs, cli: &config::CliOverrides, ctx: &OutputContext)
         println!("{}", issue.id);
     }
 
-    storage_ctx.flush_no_db_if_dirty()?;
     Ok(())
 }
 

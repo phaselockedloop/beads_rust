@@ -30,7 +30,6 @@ pub mod search;
 pub mod show;
 pub mod stale;
 pub mod stats;
-pub mod sync;
 pub mod update;
 pub mod version;
 pub mod r#where;

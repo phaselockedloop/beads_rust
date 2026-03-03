@@ -5,31 +5,15 @@ use crate::config;
 use crate::error::Result;
 use crate::output::OutputContext;
 use crate::storage::SqliteStorage;
-use crate::storage::schema::CURRENT_SCHEMA_VERSION;
 use crate::util::parse_id;
 use rich_rust::prelude::*;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-const SCHEMA_TABLES: &[&str] = &[
-    "issues",
-    "dependencies",
-    "labels",
-    "comments",
-    "events",
-    "config",
-    "metadata",
-    "dirty_issues",
-    "export_hashes",
-    "blocked_issues_cache",
-    "child_counters",
-];
-
 #[derive(Serialize)]
 struct SchemaInfo {
-    tables: Vec<String>,
-    schema_version: String,
+    storage: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     config: Option<HashMap<String, String>>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -40,22 +24,13 @@ struct SchemaInfo {
 
 #[derive(Serialize)]
 struct InfoOutput {
-    database_path: String,
     beads_dir: String,
-    mode: String,
-    daemon_connected: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    daemon_fallback_reason: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    daemon_detail: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     issue_count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     config: Option<HashMap<String, String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     schema: Option<SchemaInfo>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    db_size: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     jsonl_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -81,7 +56,6 @@ pub fn execute(args: &InfoArgs, cli: &config::CliOverrides, ctx: &OutputContext)
 
     let beads_dir = config::discover_beads_dir_with_cli(cli)?;
     let storage_ctx = config::open_storage_with_cli(&beads_dir, cli)?;
-    let db_path = canonicalize_lossy(&storage_ctx.paths.db_path);
 
     let issue_count = storage_ctx.storage.count_issues().ok();
     let config_map = storage_ctx
@@ -95,25 +69,15 @@ pub fn execute(args: &InfoArgs, cli: &config::CliOverrides, ctx: &OutputContext)
         None
     };
 
-    // Get additional info for rich output
-    let db_size = std::fs::metadata(&storage_ctx.paths.db_path)
-        .map(|m| m.len())
-        .ok();
     let jsonl_size = std::fs::metadata(&storage_ctx.paths.jsonl_path)
         .map(|m| m.len())
         .ok();
 
     let output = InfoOutput {
-        database_path: db_path.display().to_string(),
         beads_dir: canonicalize_lossy(&beads_dir).display().to_string(),
-        mode: "direct".to_string(),
-        daemon_connected: false,
-        daemon_fallback_reason: Some("no-daemon".to_string()),
-        daemon_detail: Some("br runs in direct mode only".to_string()),
         issue_count,
         config: config_map,
         schema,
-        db_size,
         jsonl_path: Some(
             canonicalize_lossy(&storage_ctx.paths.jsonl_path)
                 .display()
@@ -154,8 +118,7 @@ fn build_schema_info(
     }
 
     SchemaInfo {
-        tables: SCHEMA_TABLES.iter().map(ToString::to_string).collect(),
-        schema_version: CURRENT_SCHEMA_VERSION.to_string(),
+        storage: "jsonl".to_string(),
         config: config_map.cloned(),
         sample_issue_ids,
         detected_prefix,
@@ -163,18 +126,8 @@ fn build_schema_info(
 }
 
 fn print_human(info: &InfoOutput) {
-    println!("Beads Database Information");
-    println!("Database: {}", info.database_path);
-    println!("Mode: {}", info.mode);
-
-    if info.daemon_connected {
-        println!("Daemon: connected");
-    } else if let Some(reason) = &info.daemon_fallback_reason {
-        println!("Daemon: not connected ({reason})");
-        if let Some(detail) = &info.daemon_detail {
-            println!("  {detail}");
-        }
-    }
+    println!("Beads Information");
+    println!("Directory: {}", info.beads_dir);
 
     if let Some(count) = info.issue_count {
         println!("Issue count: {count}");
@@ -186,11 +139,14 @@ fn print_human(info: &InfoOutput) {
         println!("Issue prefix: {prefix}");
     }
 
+    if let Some(jsonl_path) = &info.jsonl_path {
+        println!("JSONL: {jsonl_path}");
+    }
+
     if let Some(schema) = &info.schema {
         println!();
         println!("Schema:");
-        println!("  Version: {}", schema.schema_version);
-        println!("  Tables: {}", schema.tables.join(", "));
+        println!("  Storage: {}", schema.storage);
         if let Some(prefix) = &schema.detected_prefix {
             println!("  Detected prefix: {prefix}");
         }
@@ -238,22 +194,8 @@ fn render_info_rich(info: &InfoOutput, ctx: &OutputContext) {
         content.append("\n");
     }
 
-    content.append("\n");
-
-    // Database section
-    content.append_styled("Database\n", theme.section.clone());
-    content.append_styled("  Path      ", theme.dimmed.clone());
-    content.append_styled(&info.database_path, theme.accent.clone());
-    content.append("\n");
-
-    if let Some(size) = info.db_size {
-        content.append_styled("  Size      ", theme.dimmed.clone());
-        content.append(&format_bytes(size));
-        content.append("\n");
-    }
-
     if let Some(count) = info.issue_count {
-        content.append_styled("  Issues    ", theme.dimmed.clone());
+        content.append_styled("Issues      ", theme.dimmed.clone());
         content.append_styled(&format!("{count}"), theme.emphasis.clone());
         content.append_styled(" total\n", theme.dimmed.clone());
     }
@@ -273,25 +215,12 @@ fn render_info_rich(info: &InfoOutput, ctx: &OutputContext) {
         }
     }
 
-    // Mode section
-    content.append("\n");
-    content.append_styled("Mode        ", theme.dimmed.clone());
-    content.append(&info.mode);
-    if !info.daemon_connected {
-        content.append_styled(" (no daemon)", theme.muted.clone());
-    }
-    content.append("\n");
-
     // Schema section (if requested)
     if let Some(schema) = &info.schema {
         content.append("\n");
         content.append_styled("Schema\n", theme.section.clone());
-        content.append_styled("  Version   ", theme.dimmed.clone());
-        content.append(&schema.schema_version);
-        content.append("\n");
-
-        content.append_styled("  Tables    ", theme.dimmed.clone());
-        content.append(&schema.tables.join(", "));
+        content.append_styled("  Storage   ", theme.dimmed.clone());
+        content.append(&schema.storage);
         content.append("\n");
 
         if let Some(prefix) = &schema.detected_prefix {

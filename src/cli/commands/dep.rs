@@ -69,7 +69,6 @@ pub fn execute(
         DepCommands::Cycles(args) => dep_cycles(args, storage, json, ctx),
     }?;
 
-    storage_ctx.flush_no_db_if_dirty()?;
     Ok(())
 }
 

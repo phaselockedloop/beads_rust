@@ -147,7 +147,6 @@ pub fn execute(args: &UpdateArgs, cli: &config::CliOverrides, ctx: &OutputContex
         ctx.json_pretty(&updated_issues);
     }
 
-    storage_ctx.flush_no_db_if_dirty()?;
     Ok(())
 }
 

@@ -45,7 +45,6 @@ pub fn execute(
         LabelCommands::Rename(args) => label_rename(args, storage, &actor, json, ctx),
     }?;
 
-    storage_ctx.flush_no_db_if_dirty()?;
     Ok(())
 }
 

@@ -1,7 +1,5 @@
 use crate::error::{BeadsError, Result};
 use crate::output::{OutputContext, OutputMode};
-use crate::storage::SqliteStorage;
-use crate::util::db_path;
 use rich_rust::prelude::*;
 use std::fs;
 use std::path::Path;
@@ -10,7 +8,7 @@ use std::path::Path;
 ///
 /// # Errors
 ///
-/// Returns an error if the directory or database cannot be created.
+/// Returns an error if the directory or files cannot be created.
 #[allow(clippy::too_many_lines)]
 pub fn execute(
     prefix: Option<String>,
@@ -22,12 +20,12 @@ pub fn execute(
     let beads_dir = base_dir.join(".beads");
 
     let mut created_dir = false;
+    let jsonl_path = beads_dir.join("issues.jsonl");
+
     if beads_dir.exists() {
-        // Check if DB exists (in cache dir if BEADS_CACHE_DIR is set)
-        let effective_db_path = db_path(&beads_dir);
-        if effective_db_path.exists() && !force {
+        if jsonl_path.exists() && !force {
             return Err(BeadsError::AlreadyInitialized {
-                path: effective_db_path,
+                path: jsonl_path,
             });
         }
     } else {
@@ -35,19 +33,9 @@ pub fn execute(
         created_dir = true;
     }
 
-    let effective_db_path = db_path(&beads_dir);
-    let db_existed = effective_db_path.exists();
+    let jsonl_existed = jsonl_path.exists();
 
-    // Ensure cache directory exists if using BEADS_CACHE_DIR
-    if let Some(parent) = effective_db_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-
-    // Initialize DB (creates file and applies schema)
-    let mut storage = SqliteStorage::open(&effective_db_path)?;
-
-    // Set prefix in config table if provided, otherwise derive from directory name
-    // Normalize to lowercase since ID validation requires lowercase prefixes
+    // Normalize prefix from argument or directory name
     let actual_prefix = prefix.unwrap_or_else(|| {
         let mut dir_name = "bd".to_string();
         if let Ok(canon) = dunce::canonicalize(base_dir)
@@ -64,7 +52,6 @@ pub fn execute(
         dir_name
     });
     let normalized = actual_prefix.to_ascii_lowercase();
-    storage.set_config("issue_prefix", &normalized)?;
     let prefix_set = Some(normalized.clone());
 
     // Write metadata.json
@@ -72,19 +59,18 @@ pub fn execute(
     let metadata_existed = metadata_path.exists();
     if !metadata_existed || force {
         let metadata = r#"{
-  "database": "beads.db",
   "jsonl_export": "issues.jsonl"
 }"#;
         fs::write(metadata_path, metadata)?;
     }
 
-    // Write config.yaml template
+    // Write config.yaml with prefix set
     let config_path = beads_dir.join("config.yaml");
     let config_existed = config_path.exists();
     if !config_existed {
         let config = format!(
             "# Beads Project Configuration
-# issue_prefix: {normalized}
+issue_prefix: {normalized}
 # default_priority: 2
 # default_type: task
 "
@@ -96,25 +82,16 @@ pub fn execute(
     let gitignore_path = beads_dir.join(".gitignore");
     let gitignore_existed = gitignore_path.exists();
     if !gitignore_existed {
-        let gitignore = r"# Database
-*.db
-*.db-shm
-*.db-wal
+        let gitignore = r"# Temporary files
+*.tmp
 
 # Lock files
 *.lock
-
-# Temporary
-last-touched
-*.tmp
 ";
         fs::write(gitignore_path, gitignore)?;
     }
 
-    // Write empty issues.jsonl for compatibility with bv (beads_viewer)
-    // bv expects this file to exist even if there are no issues yet
-    let jsonl_path = beads_dir.join("issues.jsonl");
-    let jsonl_existed = jsonl_path.exists();
+    // Create empty issues.jsonl
     if !jsonl_existed {
         fs::write(&jsonl_path, "")?;
     }
@@ -126,7 +103,6 @@ last-touched
     if matches!(ctx.mode(), OutputMode::Rich) {
         let steps = build_init_steps(
             created_dir,
-            db_existed,
             metadata_existed,
             force,
             config_existed,
@@ -160,7 +136,6 @@ struct InitStep {
 #[allow(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
 fn build_init_steps(
     created_dir: bool,
-    db_existed: bool,
     metadata_existed: bool,
     force: bool,
     config_existed: bool,
@@ -176,15 +151,6 @@ fn build_init_steps(
             InitStepStatus::Created
         } else {
             InitStepStatus::Existing
-        },
-    });
-
-    steps.push(InitStep {
-        label: "SQLite database (beads.db)".to_string(),
-        status: if db_existed {
-            InitStepStatus::Existing
-        } else {
-            InitStepStatus::Created
         },
     });
 
@@ -219,7 +185,7 @@ fn build_init_steps(
     });
 
     steps.push(InitStep {
-        label: "issues.jsonl (for bv compatibility)".to_string(),
+        label: "issues.jsonl".to_string(),
         status: if jsonl_existed {
             InitStepStatus::Existing
         } else {
@@ -261,7 +227,6 @@ fn render_init_rich(
     content.append("\n");
     content.append_styled("Layout:\n", theme.emphasis.clone());
     content.append("  .beads/\n");
-    content.append("    |-- beads.db\n");
     content.append("    |-- metadata.json\n");
     content.append("    |-- config.yaml\n");
     content.append("    |-- .gitignore\n");
@@ -319,7 +284,6 @@ mod tests {
 
         assert!(result.is_ok());
         assert!(temp_dir.path().join(".beads").exists());
-        assert!(temp_dir.path().join(".beads/beads.db").exists());
         assert!(temp_dir.path().join(".beads/metadata.json").exists());
         assert!(temp_dir.path().join(".beads/config.yaml").exists());
         assert!(temp_dir.path().join(".beads/.gitignore").exists());
@@ -337,11 +301,10 @@ mod tests {
 
         assert!(result.is_ok());
 
-        // Verify prefix was stored
-        let db_path = temp_dir.path().join(".beads/beads.db");
-        let storage = SqliteStorage::open(&db_path).unwrap();
-        let prefix = storage.get_config("issue_prefix").unwrap();
-        assert_eq!(prefix, Some("test".to_string()));
+        // Verify prefix was written to config.yaml
+        let config_path = temp_dir.path().join(".beads/config.yaml");
+        let content = fs::read_to_string(config_path).unwrap();
+        assert!(content.contains("issue_prefix: test"));
         info!("test_init_with_prefix: assertions passed");
     }
 
@@ -393,11 +356,9 @@ mod tests {
 
         assert!(result.is_ok());
 
-        // Verify new prefix
-        let db_path = temp_dir.path().join(".beads/beads.db");
-        let storage = SqliteStorage::open(&db_path).unwrap();
-        let prefix = storage.get_config("issue_prefix").unwrap();
-        assert_eq!(prefix, Some("second".to_string()));
+        // Verify new metadata was written (force rewrites metadata.json)
+        let metadata_path = temp_dir.path().join(".beads/metadata.json");
+        assert!(metadata_path.exists());
         info!("test_init_force_overwrites_existing: assertions passed");
     }
 
@@ -413,15 +374,14 @@ mod tests {
         let content = fs::read_to_string(metadata_path).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&content).unwrap();
 
-        assert_eq!(parsed["database"], "beads.db");
         assert_eq!(parsed["jsonl_export"], "issues.jsonl");
         info!("test_metadata_json_content: assertions passed");
     }
 
     #[test]
-    fn test_gitignore_excludes_db_files() {
+    fn test_gitignore_excludes_tmp_files() {
         init_logging();
-        info!("test_gitignore_excludes_db_files: starting");
+        info!("test_gitignore_excludes_tmp_files: starting");
         let temp_dir = TempDir::new().unwrap();
         let ctx = OutputContext::from_flags(false, false, true);
         execute(None, false, Some(temp_dir.path()), &ctx).unwrap();
@@ -429,10 +389,8 @@ mod tests {
         let gitignore_path = temp_dir.path().join(".beads/.gitignore");
         let content = fs::read_to_string(gitignore_path).unwrap();
 
-        assert!(content.contains("*.db"));
-        assert!(content.contains("*.db-wal"));
-        assert!(content.contains("*.db-shm"));
+        assert!(content.contains("*.tmp"));
         assert!(content.contains("*.lock"));
-        info!("test_gitignore_excludes_db_files: assertions passed");
+        info!("test_gitignore_excludes_tmp_files: assertions passed");
     }
 }

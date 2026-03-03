@@ -31,18 +31,6 @@ pub enum BeadsError {
     #[error("Database not found at '{path}'")]
     DatabaseNotFound { path: PathBuf },
 
-    /// Database is locked by another process.
-    #[error("Database is locked: {path}")]
-    DatabaseLocked { path: PathBuf },
-
-    /// Database schema version doesn't match expected.
-    #[error("Schema version mismatch: expected {expected}, found {found}")]
-    SchemaMismatch { expected: i32, found: i32 },
-
-    /// `SQLite` database error.
-    #[error("Database error: {0}")]
-    Database(#[from] fsqlite_error::FrankenError),
-
     // === Issue Errors ===
     /// Issue with the specified ID was not found.
     #[error("Issue not found: {id}")]
@@ -306,7 +294,7 @@ mod tests {
         assert!(recoverable.is_user_recoverable());
 
         let not_recoverable =
-            BeadsError::Database(fsqlite_error::FrankenError::Internal("test".to_string()));
+            BeadsError::Io(std::io::Error::new(std::io::ErrorKind::Other, "test"));
         assert!(!not_recoverable.is_user_recoverable());
     }
 

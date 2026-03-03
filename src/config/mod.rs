@@ -14,15 +14,12 @@ pub mod routing;
 use crate::error::{BeadsError, Result};
 use crate::model::{IssueType, Priority};
 use crate::storage::SqliteStorage;
-use crate::sync::{
-    ExportConfig, ImportConfig, export_to_jsonl_with_policy, finalize_export, import_from_jsonl,
-};
 use crate::util::id::IdConfig;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::io::{BufRead, IsTerminal};
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use tracing::warn;
@@ -289,21 +286,18 @@ fn derive_beads_dir_from_db_path(db_path: &Path) -> Result<PathBuf> {
 ///
 /// # Errors
 ///
-/// Returns an error if metadata cannot be read or the database cannot be opened.
+/// Returns an error if metadata cannot be read or the storage file cannot be opened.
 pub fn open_storage(
     beads_dir: &Path,
     db_override: Option<&PathBuf>,
-    lock_timeout: Option<u64>,
+    _lock_timeout: Option<u64>,
 ) -> Result<(SqliteStorage, ConfigPaths)> {
     let startup_layer = load_startup_config(beads_dir)?;
     let resolved_db_override = db_override
         .cloned()
         .or_else(|| db_override_from_layer(&startup_layer));
-    let resolved_lock_timeout = lock_timeout
-        .or_else(|| lock_timeout_from_layer(&startup_layer))
-        .or(Some(30000));
     let paths = ConfigPaths::resolve(beads_dir, resolved_db_override.as_ref())?;
-    let storage = SqliteStorage::open_with_timeout(&paths.db_path, resolved_lock_timeout)?;
+    let storage = SqliteStorage::open(&paths.jsonl_path)?;
     Ok((storage, paths))
 }
 
@@ -312,50 +306,13 @@ pub fn open_storage(
 pub struct OpenStorageResult {
     pub storage: SqliteStorage,
     pub paths: ConfigPaths,
-    pub no_db: bool,
 }
 
-impl OpenStorageResult {
-    /// Flush JSONL if no-db mode is enabled and there are dirty issues.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if JSONL export fails.
-    pub fn flush_no_db_if_dirty(&mut self) -> Result<()> {
-        if !self.no_db {
-            return Ok(());
-        }
-
-        if self.storage.get_dirty_issue_count()? == 0 {
-            return Ok(());
-        }
-
-        let export_config = ExportConfig {
-            force: false,
-            is_default_path: self.paths.jsonl_path == self.paths.beads_dir.join("issues.jsonl"),
-            beads_dir: Some(self.paths.beads_dir.clone()),
-            allow_external_jsonl: false,
-            show_progress: false,
-            ..Default::default()
-        };
-
-        let (export_result, _report) =
-            export_to_jsonl_with_policy(&self.storage, &self.paths.jsonl_path, &export_config)?;
-        finalize_export(
-            &mut self.storage,
-            &export_result,
-            Some(&export_result.issue_hashes),
-        )?;
-
-        Ok(())
-    }
-}
-
-/// Open storage with CLI overrides and support for `--no-db` mode.
+/// Open storage with CLI overrides.
 ///
 /// # Errors
 ///
-/// Returns an error if configuration loading, JSONL import, or storage setup fails.
+/// Returns an error if configuration loading or storage setup fails.
 pub fn open_storage_with_cli(beads_dir: &Path, cli: &CliOverrides) -> Result<OpenStorageResult> {
     let startup_layer = load_startup_config(beads_dir)?;
     let cli_layer = cli.as_layer();
@@ -367,119 +324,23 @@ pub fn open_storage_with_cli(beads_dir: &Path, cli: &CliOverrides) -> Result<Ope
         .db
         .clone()
         .or_else(|| db_override_from_layer(&merged_layer));
-    let resolved_lock_timeout = cli
-        .lock_timeout
-        .or_else(|| lock_timeout_from_layer(&merged_layer))
-        .or(Some(30000));
 
     let paths = ConfigPaths::resolve(beads_dir, resolved_db_override.as_ref())?;
 
-    if no_db {
-        let mut storage = SqliteStorage::open_memory()?;
-        let prefix = resolve_no_db_prefix(beads_dir, &paths.jsonl_path)?;
-        storage.set_config("issue_prefix", &prefix)?;
-
-        if paths.jsonl_path.is_file() {
-            let import_config = ImportConfig {
-                beads_dir: Some(beads_dir.to_path_buf()),
-                allow_external_jsonl: false,
-                show_progress: false,
-                ..Default::default()
-            };
-            import_from_jsonl(
-                &mut storage,
-                &paths.jsonl_path,
-                &import_config,
-                Some(&prefix),
-            )?;
-        }
-
-        Ok(OpenStorageResult {
-            storage,
-            paths,
-            no_db,
-        })
+    // In --no-db mode, use an in-memory store (no persistence).
+    // Otherwise open from JSONL file.
+    let storage = if no_db {
+        SqliteStorage::open_memory()?
     } else {
-        let storage = SqliteStorage::open_with_timeout(&paths.db_path, resolved_lock_timeout)?;
-        Ok(OpenStorageResult {
-            storage,
-            paths,
-            no_db,
-        })
-    }
+        SqliteStorage::open(&paths.jsonl_path)?
+    };
+
+    Ok(OpenStorageResult { storage, paths })
 }
 
 #[must_use]
 pub fn no_db_from_layer(layer: &ConfigLayer) -> Option<bool> {
     get_startup_value(layer, &["no-db", "no_db", "no.db"]).and_then(|value| parse_bool(value))
-}
-
-fn resolve_no_db_prefix(beads_dir: &Path, jsonl_path: &Path) -> Result<String> {
-    let project_layer = load_project_config(beads_dir)?;
-    if let Some(prefix) = get_value(&project_layer, &["issue_prefix", "issue-prefix", "prefix"]) {
-        let trimmed = prefix.trim();
-        if !trimmed.is_empty() {
-            return Ok(trimmed.to_string());
-        }
-    }
-
-    if let Some(prefix) = common_prefix_from_jsonl(jsonl_path)? {
-        return Ok(prefix);
-    }
-
-    if let Some(name) = beads_dir
-        .parent()
-        .and_then(|p| p.file_name())
-        .and_then(|name| name.to_str())
-        .map(str::trim)
-        .filter(|name| !name.is_empty())
-    {
-        return Ok(name.to_string());
-    }
-
-    Ok("bd".to_string())
-}
-
-fn common_prefix_from_jsonl(jsonl_path: &Path) -> Result<Option<String>> {
-    if !jsonl_path.is_file() {
-        return Ok(None);
-    }
-
-    let file = std::fs::File::open(jsonl_path)?;
-    let reader = std::io::BufReader::new(file);
-    let mut prefixes: HashSet<String> = HashSet::new();
-
-    for (line_num, line) in reader.lines().enumerate() {
-        let line = line?;
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        let value: serde_json::Value = serde_json::from_str(trimmed).map_err(|e| {
-            BeadsError::Config(format!("Invalid JSON at line {}: {}", line_num + 1, e))
-        })?;
-        let Some(id) = value.get("id").and_then(|v| v.as_str()) else {
-            continue;
-        };
-
-        let Some((prefix, _)) = id.split_once('-') else {
-            return Err(BeadsError::InvalidId { id: id.to_string() });
-        };
-        if prefix.is_empty() {
-            return Err(BeadsError::InvalidId { id: id.to_string() });
-        }
-
-        prefixes.insert(prefix.to_string());
-        if prefixes.len() > 1 {
-            return Err(BeadsError::Config(
-                "Mixed issue prefixes detected in JSONL. Set issue-prefix in .beads/config.yaml."
-                    .to_string(),
-            ));
-        }
-    }
-
-    Ok(prefixes.into_iter().next())
 }
 
 /// Resolve config paths using startup config layers for overrides.
@@ -1109,11 +970,6 @@ fn db_override_from_layer(layer: &ConfigLayer) -> Option<PathBuf> {
     })
 }
 
-fn lock_timeout_from_layer(layer: &ConfigLayer) -> Option<u64> {
-    get_startup_value(layer, &["lock-timeout", "lock_timeout"])
-        .and_then(|value| value.trim().parse::<u64>().ok())
-}
-
 fn layer_from_yaml_value(value: &serde_yml::Value) -> ConfigLayer {
     let mut layer = ConfigLayer::default();
     let mut flat = HashMap::new();
@@ -1331,17 +1187,6 @@ labels:
 
         let override_path = db_override_from_layer(&layer).expect("db override");
         assert_eq!(override_path, PathBuf::from("/tmp/beads.db"));
-    }
-
-    #[test]
-    fn startup_layer_reads_lock_timeout() {
-        let mut layer = ConfigLayer::default();
-        layer
-            .startup
-            .insert("lock_timeout".to_string(), "2500".to_string());
-
-        let timeout = lock_timeout_from_layer(&layer).expect("lock timeout");
-        assert_eq!(timeout, 2500);
     }
 
     // ==================== Additional Config Unit Tests ====================

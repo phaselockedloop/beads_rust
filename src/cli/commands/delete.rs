@@ -199,7 +199,6 @@ pub fn execute(
     // 9. Output
     if ctx.is_json() {
         ctx.json_pretty(&result);
-        storage_ctx.flush_no_db_if_dirty()?;
         return Ok(());
     }
 
@@ -225,7 +224,6 @@ pub fn execute(
         }
     }
 
-    storage_ctx.flush_no_db_if_dirty()?;
     Ok(())
 }
 
@@ -586,20 +584,9 @@ mod tests {
         storage.create_issue(&b, "tester").unwrap();
         storage.create_issue(&c, "tester").unwrap();
 
-        // Add dependencies
-        storage
-            .mutate("test_add_deps", "tester", |tx, _ctx| {
-                tx.execute_with_params(
-                    "INSERT INTO dependencies (issue_id, depends_on_id, type, created_at) VALUES (?, ?, ?, ?)",
-                    &[fsqlite_types::SqliteValue::from("bd-b"), fsqlite_types::SqliteValue::from("bd-a"), fsqlite_types::SqliteValue::from("blocks"), fsqlite_types::SqliteValue::from(chrono::Utc::now().to_rfc3339().as_str())],
-                )?;
-                tx.execute_with_params(
-                    "INSERT INTO dependencies (issue_id, depends_on_id, type, created_at) VALUES (?, ?, ?, ?)",
-                    &[fsqlite_types::SqliteValue::from("bd-c"), fsqlite_types::SqliteValue::from("bd-b"), fsqlite_types::SqliteValue::from("blocks"), fsqlite_types::SqliteValue::from(chrono::Utc::now().to_rfc3339().as_str())],
-                )?;
-                Ok(())
-            })
-            .unwrap();
+        // Add dependencies: B depends on A, C depends on B
+        storage.add_dependency("bd-b", "bd-a", "blocks", "tester").unwrap();
+        storage.add_dependency("bd-c", "bd-b", "blocks", "tester").unwrap();
 
         // Collect cascade from A
         let cascade = collect_cascade_dependents(&storage, &["bd-a".to_string()]).unwrap();

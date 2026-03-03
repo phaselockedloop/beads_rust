@@ -19,8 +19,6 @@ struct WhereOutput {
     #[serde(skip_serializing_if = "Option::is_none")]
     prefix: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    database_path: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     jsonl_path: Option<String>,
 }
 
@@ -42,7 +40,6 @@ pub fn execute(cli: &config::CliOverrides, ctx: &OutputContext) -> Result<()> {
     };
 
     let paths = config::ConfigPaths::resolve(&final_dir, cli.db.as_ref())?;
-    let database_path = canonicalize_lossy(&paths.db_path).display().to_string();
     let jsonl_path = canonicalize_lossy(&paths.jsonl_path).display().to_string();
     let prefix = detect_prefix(&final_dir, &paths.jsonl_path, cli);
 
@@ -50,7 +47,6 @@ pub fn execute(cli: &config::CliOverrides, ctx: &OutputContext) -> Result<()> {
         path: canonicalize_lossy(&final_dir).display().to_string(),
         redirected_from,
         prefix,
-        database_path: Some(database_path),
         jsonl_path: Some(jsonl_path),
     };
 
@@ -125,8 +121,8 @@ fn print_human(output: &WhereOutput) {
     if let Some(prefix) = &output.prefix {
         println!("  prefix: {prefix}");
     }
-    if let Some(db_path) = &output.database_path {
-        println!("  database: {db_path}");
+    if let Some(jsonl_path) = &output.jsonl_path {
+        println!("  jsonl: {jsonl_path}");
     }
 }
 
@@ -176,13 +172,6 @@ fn render_where_rich(output: &WhereOutput, ctx: &OutputContext) {
     if let Some(prefix) = &output.prefix {
         content.append_styled("Prefix      ", theme.dimmed.clone());
         content.append_styled(prefix, theme.issue_id.clone());
-        content.append("\n");
-    }
-
-    // Database path
-    if let Some(db_path) = &output.database_path {
-        content.append_styled("Database    ", theme.dimmed.clone());
-        content.append_styled(db_path, theme.accent.clone());
         content.append("\n");
     }
 

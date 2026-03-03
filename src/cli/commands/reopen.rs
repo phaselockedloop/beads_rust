@@ -179,7 +179,6 @@ pub fn execute(
         }
     }
 
-    storage_ctx.flush_no_db_if_dirty()?;
     Ok(())
 }
 

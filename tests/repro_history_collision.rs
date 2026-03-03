@@ -1,4 +1,4 @@
-use beads_rust::sync::history::{HistoryConfig, backup_before_export, list_backups};
+use beads_rust::history::{HistoryConfig, backup_before_export, list_backups};
 use std::fs::File;
 use std::io::Write;
 use tempfile::TempDir;

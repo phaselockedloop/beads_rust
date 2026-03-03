@@ -335,7 +335,6 @@ pub fn execute_with_args(
         }
     }
 
-    storage_ctx.flush_no_db_if_dirty()?;
 
     // Return non-zero exit code if all issues were skipped (none actually closed)
     if closed_count == 0 && skipped_count > 0 {

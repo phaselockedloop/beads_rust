@@ -3,10 +3,10 @@ name = "beads_rust"
 version = "0.1.20"
 edition = "2024"
 rust-version = "1.88"
-description = "Agent-first issue tracker (SQLite + JSONL)"
+description = "Agent-first issue tracker (JSON)"
 license = "MIT"
 repository = "https://github.com/Dicklesworthstone/beads_rust"
-keywords = ["cli", "issue-tracker", "sqlite", "agent"]
+keywords = ["cli", "issue-tracker", "json", "agent"]
 categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
@@ -17,24 +17,6 @@ path = "src/main.rs"
 # CLI
 clap = { version = "4.5.60", features = ["derive", "env", "unstable-ext"] }
 clap_complete = { version = "4.5.66", features = ["unstable-dynamic"] }
-
-# Database (pure-Rust SQLite with concurrent writer support)
-# NOTE: transitive fsqlite workspace deps listed explicitly so rch syncs them
-fsqlite = "0.1.0"
-fsqlite-types = "0.1.0"
-fsqlite-error = "0.1.0"
-fsqlite-core = "0.1.0"
-fsqlite-func = "0.1.0"
-fsqlite-vdbe = "0.1.0"
-fsqlite-vfs = "0.1.0"
-fsqlite-pager = "0.1.0"
-fsqlite-parser = "0.1.0"
-fsqlite-planner = "0.1.0"
-fsqlite-wal = "0.1.0"
-fsqlite-btree = "0.1.0"
-fsqlite-ast = "0.1.0"
-fsqlite-mvcc = "0.1.0"
-fsqlite-observability = "0.1.0"
 
 # Serialization
 serde = { version = "1.0.228", features = ["derive"] }
@@ -111,28 +93,6 @@ opt-level = 1
 [features]
 default = ["self_update"]
 self_update = ["dep:self_update"]
-
-# Override crates.io fsqlite with GitHub HEAD to pick up uring-fs removal
-# (pure-Rust UnixVfs replaces IoUringVfs, eliminating glibc 2.39 requirement)
-[patch.crates-io]
-fsqlite          = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite" }
-fsqlite-ast      = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-ast" }
-fsqlite-btree    = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-btree" }
-fsqlite-core     = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-core" }
-fsqlite-error    = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-error" }
-fsqlite-ext-fts5 = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-ext-fts5" }
-fsqlite-ext-json = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-ext-json" }
-fsqlite-ext-rtree = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-ext-rtree" }
-fsqlite-func     = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-func" }
-fsqlite-mvcc     = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-mvcc" }
-fsqlite-observability = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-observability" }
-fsqlite-pager    = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-pager" }
-fsqlite-parser   = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-parser" }
-fsqlite-planner  = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-planner" }
-fsqlite-types    = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-types" }
-fsqlite-vdbe     = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-vdbe" }
-fsqlite-vfs      = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-vfs" }
-fsqlite-wal      = { git = "https://github.com/Dicklesworthstone/frankensqlite", branch = "main", package = "fsqlite-wal" }
 
 [lints.rust]
 unsafe_code = "forbid"

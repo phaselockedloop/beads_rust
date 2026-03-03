@@ -164,26 +164,6 @@ const CSV_FIELD_CANDIDATES: &[(&str, &str)] = &[
     ("external_ref", "External ref"),
 ];
 
-const EXPORT_ERROR_POLICY_CANDIDATES: &[(&str, &str)] = &[
-    ("strict", "Abort export on any error (default)"),
-    (
-        "best-effort",
-        "Skip problematic records, export what we can",
-    ),
-    ("partial", "Export valid records, report failures"),
-    (
-        "required-core",
-        "Only export core issues, tolerate non-core errors",
-    ),
-];
-
-const ORPHAN_MODE_CANDIDATES: &[(&str, &str)] = &[
-    ("strict", "Fail if any issue references a missing parent"),
-    ("resurrect", "Attempt to resurrect missing parents if found"),
-    ("skip", "Skip orphaned issues"),
-    ("allow", "Allow orphans (no parent validation)"),
-];
-
 const SAVED_QUERY_PREFIX: &str = "saved_query:";
 
 fn completion_index() -> &'static CompletionIndex {
@@ -622,20 +602,6 @@ fn config_key_assignment_completer(current: &OsStr) -> Vec<CompletionCandidate> 
     candidates
 }
 
-fn export_error_policy_completer(current: &OsStr) -> Vec<CompletionCandidate> {
-    let Some(prefix) = current.to_str() else {
-        return Vec::new();
-    };
-    static_candidates(prefix, EXPORT_ERROR_POLICY_CANDIDATES)
-}
-
-fn orphan_mode_completer(current: &OsStr) -> Vec<CompletionCandidate> {
-    let Some(prefix) = current.to_str() else {
-        return Vec::new();
-    };
-    static_candidates(prefix, ORPHAN_MODE_CANDIDATES)
-}
-
 fn sort_key_completer(current: &OsStr) -> Vec<CompletionCandidate> {
     let Some(prefix) = current.to_str() else {
         return Vec::new();
@@ -836,45 +802,6 @@ pub enum Commands {
 
     /// Alias for stats
     Status(StatsArgs),
-
-    /// Sync database with JSONL file (export or import)
-    ///
-    /// IMPORTANT: br sync NEVER executes git commands or auto-commits.
-    /// All file operations are confined to .beads/ by default.
-    /// Use -v for detailed safety logging, -vv for debug output.
-    #[command(long_about = "Sync database with JSONL file (export or import).
-
-SAFETY GUARANTEES:
-  • br sync NEVER executes git commands or auto-commits
-  • br sync NEVER modifies files outside .beads/ (unless --allow-external-jsonl)
-  • All writes use atomic temp-file-then-rename pattern
-  • Safety guards prevent accidental data loss
-
-MODES (one required unless --status):
-  --flush-only    Export database to JSONL (safe by default)
-  --import-only   Import JSONL into database (validates first)
-  --status        Show sync status (read-only)
-
-SAFETY GUARDS:
-  Export guards (bypassed with --force):
-    • Empty DB Guard: Refuses to export empty DB over non-empty JSONL
-    • Stale DB Guard: Refuses to export if JSONL has issues missing from DB
-
-  Import guards (cannot be bypassed):
-    • Conflict markers: Rejects files with git merge conflict markers
-    • Invalid JSON: Rejects malformed JSONL entries
-
-VERBOSE LOGGING:
-  -v     Show INFO-level safety guard decisions
-  -vv    Show DEBUG-level file operations
-
-EXAMPLES:
-  br sync --flush-only           Export database to .beads/issues.jsonl
-  br sync --flush-only -v        Export with safety logging
-  br sync --import-only          Import from JSONL (validates first)
-  br sync --rebuild              Import + remove DB entries not in JSONL
-  br sync --status               Show current sync status")]
-    Sync(SyncArgs),
 
     /// Undefer issues (make ready again)
     Undefer(UndeferArgs),
@@ -2034,85 +1961,6 @@ pub enum SortPolicy {
     Priority,
     /// Sort by `created_at` ASC only
     Oldest,
-}
-
-/// Arguments for the sync command.
-#[derive(Args, Debug, Clone, Default)]
-#[allow(clippy::struct_excessive_bools)]
-pub struct SyncArgs {
-    /// Export database to JSONL (DB → .beads/issues.jsonl)
-    ///
-    /// Writes all issues from `SQLite` database to JSONL format.
-    ///
-    /// This is the default if the database is newer than the JSONL file.
-    #[arg(long, group = "sync_action")]
-    pub flush_only: bool,
-
-    /// Import JSONL to database (JSONL → DB)
-    ///
-    /// Validates JSONL before import. Rejects files with git merge
-    /// conflict markers or invalid JSON (cannot be bypassed).
-    #[arg(long)]
-    pub import_only: bool,
-
-    /// Perform a 3-way merge (Base + Local DB + Remote JSONL)
-    ///
-    /// Reconciles changes when both the database and JSONL have been modified.
-    /// Uses `.beads/base_snapshot.jsonl` as the common ancestor.
-    #[arg(long)]
-    pub merge: bool,
-
-    /// Show sync status (read-only)
-    ///
-    /// Displays hash comparison and freshness info without modifications.
-    #[arg(long)]
-    pub status: bool,
-
-    /// Override safety guards (use with caution!)
-    ///
-    /// Bypasses Empty DB Guard and Stale DB Guard for export.
-    /// Does NOT bypass conflict marker detection or JSON validation.
-    #[arg(long, short = 'f')]
-    pub force: bool,
-
-    /// Allow using a JSONL path outside the .beads directory.
-    ///
-    /// This flag enables paths set via `BEADS_JSONL` environment variable.
-    /// Paths inside .git/ are always rejected regardless of this flag.
-    #[arg(long)]
-    pub allow_external_jsonl: bool,
-
-    /// Write manifest file with export summary
-    #[arg(long)]
-    pub manifest: bool,
-
-    /// Export error policy: strict (default), best-effort, partial, required-core
-    ///
-    /// Controls how export handles serialization errors for individual issues.
-    #[arg(long = "error-policy", add = ArgValueCompleter::new(export_error_policy_completer))]
-    pub error_policy: Option<String>,
-
-    /// Orphan handling mode: strict (default), resurrect, skip, allow
-    ///
-    /// Controls how import handles orphaned dependencies (refs to deleted issues).
-    #[arg(long, add = ArgValueCompleter::new(orphan_mode_completer))]
-    pub orphans: Option<String>,
-
-    /// Rename issues with wrong prefix to expected prefix during import
-    #[arg(long)]
-    pub rename_prefix: bool,
-
-    /// Rebuild the database from JSONL (removes orphaned DB entries)
-    ///
-    /// After importing, deletes any issues in the database that are not
-    /// present in the JSONL file. This ensures the DB exactly matches
-    /// the JSONL source of truth.
-    #[arg(long)]
-    pub rebuild: bool,
-
-    /// Machine-readable output (alias for --json)
-    #[arg(long)]
-    pub robot: bool,
 }
 
 #[derive(Subcommand, Debug, Clone)]

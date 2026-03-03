@@ -92,7 +92,6 @@ pub fn execute(args: &CreateArgs, cli: &config::CliOverrides, ctx: &OutputContex
         ctx.success(&format!("Created {}: {}", issue.id, issue.title));
     }
 
-    storage_ctx.flush_no_db_if_dirty()?;
     Ok(())
 }
 
@@ -607,7 +606,6 @@ fn execute_import(
         }
     }
 
-    storage_ctx.flush_no_db_if_dirty()?;
     Ok(())
 }
 

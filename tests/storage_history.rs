@@ -13,7 +13,7 @@
 //!
 //! Related bead: beads_rust-2xbh
 
-use beads_rust::sync::history::{
+use beads_rust::history::{
     BackupEntry, HistoryConfig, backup_before_export, list_backups, prune_backups,
 };
 use chrono::{Duration, Utc};

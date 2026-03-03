@@ -3,7 +3,7 @@ use crate::cli::HistoryCommands;
 use crate::config;
 use crate::error::{BeadsError, Result};
 use crate::output::OutputContext;
-use crate::sync::history;
+use crate::history;
 use chrono::NaiveDateTime;
 use rich_rust::prelude::*;
 use serde_json::json;
@@ -271,7 +271,7 @@ fn restore_backup(
             "backup": filename,
             "target": target_path.display().to_string(),
             "restored": true,
-            "next_step": "br sync --import-only --force",
+            "next_step": "The JSONL file has been restored. Restart br to load the updated data.",
         });
         ctx.json_pretty(&output);
         return Ok(());
@@ -283,8 +283,7 @@ fn restore_backup(
 
     if ctx.is_rich() {
         let theme = ctx.theme();
-        let body =
-            format!("Restored {filename} to {target_name}.\nNext: br sync --import-only --force");
+        let body = format!("Restored {filename} to {target_name}.");
         let panel = Panel::from_text(&body)
             .title(Text::styled("History Restore", theme.panel_title.clone()))
             .box_style(theme.box_style)
@@ -292,7 +291,6 @@ fn restore_backup(
         ctx.render(&panel);
     } else {
         println!("Restored {filename} to {target_name}");
-        println!("Run 'br sync --import-only --force' to import this state into the database.");
     }
 
     Ok(())
@@ -305,7 +303,7 @@ fn prune_backups(
     older_than_days: Option<u32>,
     ctx: &OutputContext,
 ) -> Result<()> {
-    let deleted = crate::sync::history::prune_backups(history_dir, keep, older_than_days)?;
+    let deleted = crate::history::prune_backups(history_dir, keep, older_than_days)?;
 
     if ctx.is_json() {
         let output = json!({

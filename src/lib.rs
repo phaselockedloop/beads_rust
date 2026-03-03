@@ -9,8 +9,7 @@
 //!
 //! - [`cli`] - Command-line interface using clap
 //! - [`model`] - Data types (Issue, Dependency, Comment, Event)
-//! - [`storage`] - `SQLite` database layer
-//! - [`sync`] - JSONL import/export operations
+//! - [`storage`] - JSON file storage layer
 //! - [`config`] - Configuration management
 //! - [`error`] - Error types and handling
 //! - [`format`] - Output formatting (text, JSON)
@@ -24,11 +23,11 @@ pub mod cli;
 pub mod config;
 pub mod error;
 pub mod format;
+pub mod history;
 pub mod logging;
 pub mod model;
 pub mod output;
 pub mod storage;
-pub mod sync;
 pub mod util;
 pub mod validation;
 

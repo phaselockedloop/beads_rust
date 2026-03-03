@@ -495,15 +495,6 @@ impl StructuredError {
                 ErrorCode::DatabaseNotFound,
                 Some(json!({"path": path.display().to_string()})),
             ),
-            BeadsError::DatabaseLocked { path } => (
-                ErrorCode::DatabaseLocked,
-                Some(json!({"path": path.display().to_string()})),
-            ),
-            BeadsError::SchemaMismatch { expected, found } => (
-                ErrorCode::SchemaMismatch,
-                Some(json!({"expected": expected, "found": found})),
-            ),
-            BeadsError::Database(_) => (ErrorCode::DatabaseError, None),
             BeadsError::NotInitialized => (ErrorCode::NotInitialized, None),
             BeadsError::AlreadyInitialized { path } => (
                 ErrorCode::AlreadyInitialized,
